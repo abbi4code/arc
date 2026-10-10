@@ -40,14 +40,18 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   )
 })
 
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
-  return (
-    <label className="grid gap-1.5">
+/** Wraps a single input in a <label>; pass `group` for a set of buttons (a label would rename the first one). */
+export function Field({ label, children, hint, group }: { label: string; children: ReactNode; hint?: string; group?: boolean }) {
+  const content = (
+    <>
       <span className="text-xs font-medium text-muted">{label}</span>
       {children}
       {hint && <span className="text-xs text-faint">{hint}</span>}
-    </label>
+    </>
   )
+  return group
+    ? <div role="group" aria-label={label} className="grid gap-1.5">{content}</div>
+    : <label className="grid gap-1.5">{content}</label>
 }
 
 export function Kbd({ children }: { children: ReactNode }) {

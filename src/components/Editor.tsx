@@ -151,7 +151,7 @@ function RoutineForm({ initial, onDone }: { initial: Partial<Routine>; onDone: (
       <Field label="Title">
         <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. DSA practice" required />
       </Field>
-      <Field label="Repeats on">
+      <Field label="Repeats on" group>
         <div className="grid gap-2">
           <div className="flex gap-1">
             {WEEKDAY_NAMES.map((name, d) => (
@@ -181,7 +181,7 @@ function RoutineForm({ initial, onDone }: { initial: Partial<Routine>; onDone: (
         <Field label="Start (optional)"><Input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
         <Field label="Duration"><DurationSelect value={duration} onChange={setDuration} /></Field>
       </div>
-      <Field label="Color">
+      <Field label="Color" group>
         <div className="flex gap-2">
           {Object.entries(COLORS).map(([name, hex]) => (
             <button

@@ -104,7 +104,7 @@ export default function TodayPage() {
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex flex-col md:h-full md:min-h-0">
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-4 pb-4 pt-5 md:px-6">
         <div>
           <div className="flex items-center gap-2 text-xs text-muted">
@@ -114,8 +114,8 @@ export default function TodayPage() {
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{fmt(date, { weekday: 'long' })}</h1>
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden items-center gap-2 sm:flex" aria-label={`${progress.done} of ${progress.total} done`}>
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-panel-2">
+          <div className="flex items-center gap-2" aria-label={`${progress.done} of ${progress.total} done`}>
+            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-panel-2 sm:w-24">
               <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
             </div>
             <span className="tabular font-mono text-xs text-muted">{progress.done}/{progress.total}</span>
@@ -128,8 +128,8 @@ export default function TodayPage() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        <section className="scrollbar-thin min-h-0 overflow-y-auto border-line px-4 py-4 md:border-r md:px-6">
+      <div className="grid md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <section className="scrollbar-thin border-line px-4 py-4 md:min-h-0 md:overflow-y-auto md:border-r md:px-6">
           <QuickAdd inputRef={quickAddRef} date={date} onAdd={saveTask} />
 
           {overdue.length > 0 && (
