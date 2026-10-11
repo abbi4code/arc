@@ -1,5 +1,4 @@
 import { Command } from 'cmdk'
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart3, CalendarDays, CalendarPlus, CheckCircle2, Circle, Palette, Plus, Repeat, Settings } from 'lucide-react'
 import { useEditor } from './Editor'
@@ -9,8 +8,7 @@ import { routinesDueOn } from '@/lib/domain/routines'
 import { logKey } from '@/lib/domain/stats'
 import { THEMES, useTheme } from '@/lib/theme'
 
-export function CommandPalette() {
-  const [open, setOpen] = useState(false)
+export default function CommandPalette({ open, setOpen }: { open: boolean; setOpen: (o: boolean) => void }) {
   const navigate = useNavigate()
   const { editTask, editRoutine } = useEditor()
   const { choice, setTheme } = useTheme()
@@ -19,17 +17,6 @@ export function CommandPalette() {
   const { keys } = useLogs()
   const { saveTask, setRoutineDone } = useMutations()
   const today = todayISO()
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setOpen((o) => !o)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
 
   const run = (fn: () => void) => () => { setOpen(false); fn() }
   const item = 'flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-fg cursor-pointer data-[selected=true]:bg-panel-2'

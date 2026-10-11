@@ -7,9 +7,8 @@
     <meta name="description" content="Routines, daily plan and schedule." />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- Start the TLS handshake with Supabase while the app boots -->
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
     <title>Winter Arc</title>
     <script>
       // Apply the saved theme before first paint (mirrors src/lib/theme.ts).

@@ -1,7 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
 
-export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs))
+export const cn = (...inputs: ClassValue[]) => clsx(inputs)
 
 export const COLORS: Record<string, string> = {
   blue: '#4f8ff7',

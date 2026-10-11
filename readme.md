@@ -8,6 +8,7 @@ Personal routine tracker + day planner. Website and installable PWA, synced thro
 - **Settings** — timezone, reminder lead time, push per device, theme.
 - Keyboard: `⌘K` commands · `n` add · `j/k` move · `x` done · `←/→` day · `t` today.
 - Works offline: edits queue locally and sync in order on reconnect.
+- Themes: Midnight, Dusk, Forest, Sepia, Light, System (contrast-tested in `src/lib/themes.test.ts`).
 
 ## Run
 
@@ -39,8 +40,31 @@ The `scripts/` checks and e2e need `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`.
 
 ### One-time dashboard settings
 
-1. **Authentication → URL Configuration**: Site URL = your deployed URL; add `http://localhost:5173` to Redirect URLs.
-2. After your first sign-in, **Authentication → Sign In / Providers → turn off "Allow new users to sign up"** so it stays single-user.
+1. **Sign-in uses a 6-digit email code** (links don't work inside an installed iPhone PWA). In
+   **Authentication → Emails → Templates**, edit **Magic Link** *and* **Confirm signup** so the body shows the code:
+   ```html
+   <h2>Your Winter Arc code</h2>
+   <p>Enter this code to sign in:</p>
+   <p style="font-size:28px;letter-spacing:6px"><strong>{{ .Token }}</strong></p>
+   ```
+2. **Authentication → URL Configuration**: Site URL = your Vercel URL.
+3. After your first sign-in, **Authentication → Sign In / Providers → turn off "Allow new users to sign up"** so it stays single-user.
+4. Supabase's built-in mailer only sends to your project's team members and is rate-limited (a few per hour). Fine for one user; add custom SMTP if you ever need more.
+
+## Deploy (Vercel)
+
+1. Import the repo in Vercel. `vercel.json` already sets the build, SPA rewrites and cache headers
+   (hashed `/assets/*` cached for a year; `index.html`, `sw.js` and the manifest always revalidated so updates arrive).
+2. Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_VAPID_PUBLIC_KEY`. **Never** the service role key.
+3. On iPhone: open the site in Safari → Share → **Add to Home Screen** → open the installed app → sign in → Settings → enable push.
+
+## Performance
+
+Measured on a throttled phone profile (slow 4G, 4× CPU): first visit ≈ 1.6–1.9 s, Lighthouse mobile 95–96.
+Launching the installed app shows your tasks in ≈ 0.15 s, also offline: the service worker serves the app,
+and the TanStack Query cache in IndexedDB serves the data while Supabase refreshes it in the background.
+Startup loads only Today; other screens, dialogs and ⌘K are separate chunks prefetched when idle
+(`src/lib/preloadable.tsx` avoids React's Suspense reveal delay once they're cached).
 
 ### Moving to a new Supabase project
 

@@ -1,11 +1,13 @@
-import { useEffect, useSyncExternalStore } from 'react'
+import { Suspense, useEffect, useState, useSyncExternalStore } from 'react'
+import { preloadable } from '@/lib/preloadable'
 import { NavLink, Outlet } from 'react-router-dom'
 import { onlineManager, useMutationState } from '@tanstack/react-query'
 import { BarChart3, CalendarDays, Cloud, CloudOff, Command, Loader2, Repeat, Settings } from 'lucide-react'
-import { CommandPalette } from './CommandPalette'
-import { Logo } from '@/pages/LoginPage'
+import { Logo } from './Logo'
 import { DEFAULT_SETTINGS, useMutations, useSettings } from '@/lib/data'
 import { cn } from '@/lib/ui'
+
+export const CommandPalette = preloadable(() => import('./CommandPalette'))
 
 const NAV = [
   { to: '/', label: 'Today', icon: CalendarDays },
@@ -17,6 +19,20 @@ const NAV = [
 export function AppShell() {
   const settings = useSettings()
   const { saveSettings } = useMutations()
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [paletteLoaded, setPaletteLoaded] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setPaletteLoaded(true)
+        setPaletteOpen((o) => !o)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // First run: create the settings row with this device's timezone.
   useEffect(() => {
@@ -46,7 +62,7 @@ export function AppShell() {
         </nav>
         <div className="mt-auto grid gap-2 px-2">
           <button
-            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+            onClick={() => { setPaletteLoaded(true); setPaletteOpen(true) }}
             className="flex h-8 items-center gap-2 rounded-md border border-line px-2 text-xs text-muted hover:text-fg cursor-pointer"
           >
             <Command size={13} /> Command menu <span className="ml-auto font-mono text-[10px]">⌘K</span>
@@ -73,7 +89,11 @@ export function AppShell() {
         ))}
       </nav>
 
-      <CommandPalette />
+      {paletteLoaded && (
+        <Suspense fallback={null}>
+          <CommandPalette open={paletteOpen} setOpen={setPaletteOpen} />
+        </Suspense>
+      )}
     </div>
   )
 }

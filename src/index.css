@@ -81,8 +81,8 @@
 }
 
 @theme inline {
-  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-bg: var(--bg);
   --color-panel: var(--panel);
   --color-panel-2: var(--panel-2);

@@ -8,6 +8,8 @@ import { AuthProvider } from './lib/auth'
 import { persister, queryClient } from './lib/queryClient'
 import { useTheme } from './lib/theme'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import '@fontsource-variable/geist/wght.css'
+import '@fontsource-variable/geist-mono/wght.css'
 import './index.css'
 
 registerSW({ immediate: true })
