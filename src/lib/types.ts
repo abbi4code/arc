@@ -30,6 +30,7 @@ export interface Task {
   notes: string | null
   done_at: string | null
   sort_order: number
+  topic_id?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -39,4 +40,33 @@ export interface Settings {
   timezone: string
   reminder_lead_min: number
   week_start: number
+}
+
+export type TrackStatus = 'active' | 'paused' | 'completed'
+
+export interface LearningTrack {
+  id: string
+  title: string
+  color: string
+  status: TrackStatus
+  sort_order: number
+  created_at?: string
+}
+
+export interface LearningGoal {
+  id: string
+  track_id: string
+  title: string
+  starts_on: ISODate
+  target_date: ISODate
+  sort_order: number
+}
+
+export interface LearningTopic {
+  id: string
+  goal_id: string
+  title: string
+  notes: string | null
+  done_at: string | null
+  sort_order: number
 }

@@ -1,6 +1,6 @@
 import { Command } from 'cmdk'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, CalendarDays, CalendarPlus, CheckCircle2, Circle, Palette, Plus, Repeat, Settings } from 'lucide-react'
+import { BarChart3, CalendarDays, CalendarPlus, CheckCircle2, Circle, GraduationCap, Palette, Plus, Repeat, Settings } from 'lucide-react'
 import { useEditor } from './Editor'
 import { useLogs, useMutations, useRoutines, useTasks } from '@/lib/data'
 import { addDaysISO, todayISO } from '@/lib/domain/dates'
@@ -10,12 +10,12 @@ import { THEMES, useTheme } from '@/lib/theme'
 
 export default function CommandPalette({ open, setOpen }: { open: boolean; setOpen: (o: boolean) => void }) {
   const navigate = useNavigate()
-  const { editTask, editRoutine } = useEditor()
+  const { editTask, editRoutine, editTrack } = useEditor()
   const { choice, setTheme } = useTheme()
   const { data: routines = [] } = useRoutines()
   const { data: tasks = [] } = useTasks()
   const { keys } = useLogs()
-  const { saveTask, setRoutineDone } = useMutations()
+  const { setTaskDone, setRoutineDone } = useMutations()
   const today = todayISO()
 
   const run = (fn: () => void) => () => { setOpen(false); fn() }
@@ -36,6 +36,7 @@ export default function CommandPalette({ open, setOpen }: { open: boolean; setOp
           <Command.Item className={item} onSelect={run(() => editTask({ date: today }))}><Plus size={15} /> New task</Command.Item>
           <Command.Item className={item} onSelect={run(() => editTask({ date: addDaysISO(today, 1) }))}><CalendarPlus size={15} /> New task for tomorrow</Command.Item>
           <Command.Item className={item} onSelect={run(() => editRoutine({ starts_on: today }))}><Repeat size={15} /> New routine</Command.Item>
+          <Command.Item className={item} onSelect={run(() => editTrack({}))}><GraduationCap size={15} /> New learning track</Command.Item>
         </Command.Group>
         <Command.Group heading="Today" className="text-[11px] text-faint [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5">
           {routinesDueOn(routines, today).map((r) => {
@@ -47,7 +48,7 @@ export default function CommandPalette({ open, setOpen }: { open: boolean; setOp
             )
           })}
           {tasks.filter((t) => t.date === today).map((t) => (
-            <Command.Item key={t.id} value={`task ${t.title}`} className={item} onSelect={run(() => saveTask({ ...t, done_at: t.done_at ? null : new Date().toISOString() }))}>
+            <Command.Item key={t.id} value={`task ${t.title}`} className={item} onSelect={run(() => setTaskDone(t, !t.done_at))}>
               {t.done_at ? <CheckCircle2 size={15} className="text-accent" /> : <Circle size={15} />} {t.done_at ? 'Undo' : 'Done'}: {t.title}
             </Command.Item>
           ))}
@@ -56,6 +57,7 @@ export default function CommandPalette({ open, setOpen }: { open: boolean; setOp
           <Command.Item className={item} onSelect={run(() => navigate('/'))}><CalendarDays size={15} /> Today</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate(`/?d=${addDaysISO(today, 1)}`))}><CalendarDays size={15} /> Tomorrow</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate('/routines'))}><Repeat size={15} /> Routines</Command.Item>
+          <Command.Item className={item} onSelect={run(() => navigate('/learning'))}><GraduationCap size={15} /> Learning</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate('/stats'))}><BarChart3 size={15} /> Stats</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate('/settings'))}><Settings size={15} /> Settings</Command.Item>
         </Command.Group>

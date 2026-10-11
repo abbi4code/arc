@@ -2,7 +2,7 @@ import { Suspense, useEffect, useState, useSyncExternalStore } from 'react'
 import { preloadable } from '@/lib/preloadable'
 import { NavLink, Outlet } from 'react-router-dom'
 import { onlineManager, useMutationState } from '@tanstack/react-query'
-import { BarChart3, CalendarDays, Cloud, CloudOff, Command, Loader2, Repeat, Settings } from 'lucide-react'
+import { BarChart3, CalendarDays, Cloud, CloudOff, Command, GraduationCap, Loader2, Repeat, Settings } from 'lucide-react'
 import { Logo } from './Logo'
 import { DEFAULT_SETTINGS, useMutations, useSettings } from '@/lib/data'
 import { cn } from '@/lib/ui'
@@ -12,6 +12,7 @@ export const CommandPalette = preloadable(() => import('./CommandPalette'))
 const NAV = [
   { to: '/', label: 'Today', icon: CalendarDays },
   { to: '/routines', label: 'Routines', icon: Repeat },
+  { to: '/learning', label: 'Learning', icon: GraduationCap },
   { to: '/stats', label: 'Stats', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -51,7 +52,7 @@ export function AppShell() {
             <NavLink
               key={to}
               to={to}
-              end
+              end={to === '/'}
               className={({ isActive }) =>
                 cn('flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors', isActive ? 'bg-panel-2 text-fg' : 'text-muted hover:bg-panel-2 hover:text-fg')
               }
@@ -81,9 +82,9 @@ export function AppShell() {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         {NAV.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} end className={({ isActive }) => cn('flex h-14 flex-col items-center justify-center gap-1 text-[10px]', isActive ? 'text-fg' : 'text-faint')}>
+          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => cn('flex h-14 flex-col items-center justify-center gap-1 text-[10px]', isActive ? 'text-fg' : 'text-faint')}>
             <Icon size={18} /> {label}
           </NavLink>
         ))}

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { ArrowRight, ChevronLeft, ChevronRight, CornerDownLeft } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowRight, ChevronLeft, ChevronRight, CornerDownLeft, GraduationCap } from 'lucide-react'
 import { Button, Check, Kbd } from '@/components/primitives'
 import { Timeline, type Block } from '@/components/Timeline'
 import { useEditor } from '@/components/Editor'
-import { useLogs, useMutations, useRoutines, useTasks } from '@/lib/data'
+import { useGoals, useLogs, useMutations, useRoutines, useTasks, useTopics, useTracks } from '@/lib/data'
+import { dueSoonGoals } from '@/lib/domain/learning'
+import { StatusBadge, dueLabel } from '@/components/learning'
 import { addDaysISO, diffDaysISO, formatHM, minutesOf, todayISO } from '@/lib/domain/dates'
 import { byScheduleOrder, routinesDueOn } from '@/lib/domain/routines'
 import { dayCompletion, logKey } from '@/lib/domain/stats'
@@ -36,7 +38,11 @@ export default function TodayPage() {
   const { data: routines = [] } = useRoutines()
   const { data: tasks = [] } = useTasks()
   const { keys: logKeys } = useLogs()
-  const { saveTask, setRoutineDone } = useMutations()
+  const { saveTask, setTaskDone, setRoutineDone } = useMutations()
+  const { data: tracks = [] } = useTracks()
+  const { data: goals = [] } = useGoals()
+  const { data: topics = [] } = useTopics()
+  const navigate = useNavigate()
   const { editTask, editRoutine } = useEditor()
 
   const due = useMemo(() => routinesDueOn(routines, date), [routines, date])
@@ -46,6 +52,17 @@ export default function TodayPage() {
     [tasks, isToday, today],
   )
   const progress = useMemo(() => dayCompletion(date, routines, logKeys, tasks), [date, routines, logKeys, tasks])
+  const dueGoals = useMemo(() => (isToday ? dueSoonGoals(goals, tracks, topics, today) : []), [isToday, goals, tracks, topics, today])
+  // "Track · Goal" label for tasks planned from a learning topic
+  const topicLabel = useMemo(() => {
+    const goalById = new Map(goals.map((g) => [g.id, g]))
+    const trackById = new Map(tracks.map((t) => [t.id, t]))
+    return new Map(topics.map((t) => {
+      const g = goalById.get(t.goal_id)
+      const tr = g && trackById.get(g.track_id)
+      return [t.id, g && tr ? `${tr.title} · ${g.title}` : '']
+    }))
+  }, [topics, goals, tracks])
 
   const items: Item[] = [
     ...overdue.map((task) => ({ kind: 'task' as const, task, done: false, overdue: true })),
@@ -56,7 +73,7 @@ export default function TodayPage() {
   const toggle = (i: Item) =>
     i.kind === 'routine'
       ? setRoutineDone(i.routine.id, date, !i.done)
-      : saveTask({ ...i.task, done_at: i.done ? null : new Date().toISOString() })
+      : setTaskDone(i.task, !i.done)
   const open = (i: Item) => (i.kind === 'routine' ? editRoutine(i.routine) : editTask(i.task))
   const moveToToday = (t: Task) => saveTask({ ...t, date: today })
 
@@ -157,6 +174,26 @@ export default function TodayPage() {
             </Group>
           )}
 
+          {dueGoals.length > 0 && (
+            <Group title="Learning deadlines" count={dueGoals.length}>
+              {dueGoals.map(({ goal, track, counts, status, progress, expected }) => (
+                <button
+                  key={goal.id}
+                  onClick={() => navigate(`/learning/${track.id}`)}
+                  className="-mx-2 flex min-h-11 items-center gap-3 rounded-md px-2 text-left transition-colors cursor-pointer hover:bg-panel-2 md:min-h-9"
+                >
+                  <GraduationCap size={16} className="shrink-0" style={{ color: colorOf(track.color) }} />
+                  <span className="min-w-0 flex-1 truncate text-sm md:text-[13px]">
+                    {goal.title} <span className="text-muted">· {track.title}</span>
+                  </span>
+                  <span className="hidden shrink-0 text-xs text-muted sm:inline">{dueLabel(goal.target_date, today).replace(/^by [^·]+· /, '')}</span>
+                  <span className="tabular shrink-0 font-mono text-[11px] text-muted">{counts.done}/{counts.total}</span>
+                  <StatusBadge status={status} progress={progress} expected={expected} />
+                </button>
+              ))}
+            </Group>
+          )}
+
           <Group title="Routines" count={due.length} empty="No routines scheduled for this day.">
             {due.map((routine) => {
               const item: Item = { kind: 'routine', routine, done: logKeys.has(logKey(routine.id, date)) }
@@ -172,7 +209,8 @@ export default function TodayPage() {
               const item: Item = { kind: 'task', task, done: !!task.done_at }
               return (
                 <Row key={task.id} item={item} focused={items[cursor] && itemKey(items[cursor]) === itemKey(item)}
-                  rowRef={(el) => (rowRefs.current[itemKey(item)] = el)} onToggle={() => toggle(item)} onOpen={() => open(item)} />
+                  rowRef={(el) => (rowRefs.current[itemKey(item)] = el)} onToggle={() => toggle(item)} onOpen={() => open(item)}
+                  chip={task.topic_id ? topicLabel.get(task.topic_id) : undefined} />
               )
             })}
           </Group>
@@ -254,8 +292,8 @@ function Group({ title, count, empty, action, children }: { title: string; count
   )
 }
 
-function Row({ item, onToggle, onOpen, meta, trailing, focused, rowRef }: {
-  item: Item; onToggle: () => void; onOpen: () => void; meta?: string; trailing?: React.ReactNode; focused?: boolean
+function Row({ item, onToggle, onOpen, meta, trailing, focused, rowRef, chip }: {
+  item: Item; onToggle: () => void; onOpen: () => void; meta?: string; trailing?: React.ReactNode; focused?: boolean; chip?: string
   rowRef: (el: HTMLDivElement | null) => void
 }) {
   const data = item.kind === 'routine' ? item.routine : item.task
@@ -278,6 +316,11 @@ function Row({ item, onToggle, onOpen, meta, trailing, focused, rowRef }: {
       <Check checked={item.done} onChange={onToggle} color={color} label={`Mark "${data.title}" ${item.done ? 'not done' : 'done'}`} />
       {color && <span className="size-1.5 shrink-0 rounded-full" style={{ background: color }} />}
       <span className={cn('min-w-0 flex-1 truncate text-sm md:text-[13px]', item.done && 'text-muted line-through')}>{data.title}</span>
+      {chip && (
+        <span className="flex min-w-0 max-w-[40%] shrink items-center gap-1 text-[11px] text-muted" title={chip}>
+          <GraduationCap size={12} className="shrink-0" /> <span className="truncate">{chip}</span>
+        </span>
+      )}
       {trailing}
       {meta && <span className="shrink-0 text-xs text-danger/80">{meta}</span>}
       {time && <span className="tabular shrink-0 font-mono text-[11px] text-faint">{time}</span>}

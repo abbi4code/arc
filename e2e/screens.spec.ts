@@ -27,6 +27,25 @@ async function seed(client: any) {
     for (const [k, r] of rs.entries()) if ((i * (k + 3)) % 7 !== 0 && i % 11 !== 0) logs.push({ routine_id: r.id, date: iso(-i) })
   logs.push({ routine_id: rs[0].id, date: iso(0) })
   await client.from('routine_logs').insert(logs)
+  const { data: [dsa, ml] } = await client.from('learning_tracks').insert([
+    { title: 'DSA', color: 'violet', sort_order: 0 }, { title: 'AI / ML', color: 'cyan', sort_order: 1 },
+  ]).select()
+  const { data: gs } = await client.from('learning_goals').insert([
+    { track_id: dsa.id, title: 'Graphs', starts_on: iso(-20), target_date: iso(4) },
+    { track_id: dsa.id, title: 'Dynamic programming patterns', starts_on: iso(-5), target_date: iso(40) },
+    { track_id: dsa.id, title: 'Arrays & hashing', starts_on: iso(-30), target_date: iso(-2) },
+    { track_id: ml.id, title: 'Transformers from scratch', starts_on: iso(-3), target_date: iso(25) },
+  ]).select()
+  const topic = (g: number, title: string, done = false, notes: string | null = null, i = 0) =>
+    ({ goal_id: gs[g].id, title, notes, done_at: done ? new Date().toISOString() : null, sort_order: i })
+  const { data: ts } = await client.from('learning_topics').insert([
+    topic(0, 'BFS / DFS', true, null, 0), topic(0, 'Topological sort', true, null, 1),
+    topic(0, 'Union-Find', false, 'https://leetcode.com/tag/union-find/', 2), topic(0, 'Dijkstra', false, null, 3), topic(0, 'Minimum spanning tree (Kruskal / Prim)', false, null, 4),
+    topic(1, 'Knapsack', true), topic(1, 'LIS'), topic(1, 'Interval DP'),
+    topic(2, 'Two pointers', true), topic(2, 'Sliding window'),
+    topic(3, 'Attention', true), topic(3, 'Tokenization'), topic(3, 'Train a tiny GPT'),
+  ]).select()
+  await client.from('tasks').insert({ title: 'Dijkstra', date: iso(0), start_time: '18:00', duration_min: 60, topic_id: ts.find((t: { title: string }) => t.title === 'Dijkstra').id })
   await client.from('tasks').insert([
     { title: 'Deep work: auth refactor', date: iso(0), start_time: '10:00', duration_min: 120 },
     { title: 'Standup', date: iso(0), start_time: '09:30', duration_min: 15, done_at: new Date().toISOString() },
@@ -65,6 +84,16 @@ for (const theme of ['midnight', 'sepia']) {
       await shot(page, `${theme}-m-routine-dialog`)
       await page.keyboard.press('Escape')
 
+      await page.getByRole('link', { name: 'Learning' }).last().click()
+      await expect(page.getByText('AI / ML')).toBeVisible()
+      await shot(page, `${theme}-m-learning`)
+      await page.getByRole('link', { name: /DSA/ }).click()
+      await expect(page.getByText('Union-Find')).toBeVisible()
+      await shot(page, `${theme}-m-track`)
+      await page.getByText('Union-Find').click()
+      await shot(page, `${theme}-m-topic`)
+      await page.keyboard.press('Escape')
+
       await page.getByRole('link', { name: 'Stats' }).last().click()
       await expect(page.getByRole('img', { name: 'Daily completion heatmap' })).toBeVisible()
       await shot(page, `${theme}-m-stats`)
@@ -79,6 +108,10 @@ for (const theme of ['midnight', 'sepia']) {
       await page.getByRole('link', { name: 'Today' }).first().click()
       await expect(page.getByText('Deep work: auth refactor').first()).toBeVisible()
       await shot(page, `${theme}-d-today`)
+      await page.getByRole('link', { name: 'Learning' }).first().click()
+      await page.getByRole('link', { name: /DSA/ }).click()
+      await expect(page.getByText('Union-Find')).toBeVisible()
+      await shot(page, `${theme}-d-track`)
       await page.getByRole('link', { name: 'Settings' }).first().click()
       await shot(page, `${theme}-d-settings`)
     } finally {

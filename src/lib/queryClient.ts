@@ -20,12 +20,33 @@ export const persister = createAsyncStoragePersister({
 })
 
 type Row = { id: string }
-export type ListTable = 'tasks' | 'routines'
+export type ListTable = 'tasks' | 'routines' | 'learning_tracks' | 'learning_goals' | 'learning_topics'
 
 // Only columns the client owns; server fills user_id / timestamps.
 const COLUMNS: Record<ListTable, string[]> = {
-  tasks: ['id', 'title', 'date', 'start_time', 'duration_min', 'notes', 'done_at', 'sort_order'],
+  tasks: ['id', 'title', 'date', 'start_time', 'duration_min', 'notes', 'done_at', 'sort_order', 'topic_id'],
   routines: ['id', 'title', 'days_of_week', 'start_time', 'duration_min', 'color', 'starts_on', 'archived_at', 'sort_order'],
+  learning_tracks: ['id', 'title', 'color', 'status', 'sort_order'],
+  learning_goals: ['id', 'track_id', 'title', 'starts_on', 'target_date', 'sort_order'],
+  learning_topics: ['id', 'goal_id', 'title', 'notes', 'done_at', 'sort_order'],
+}
+
+/** Server-side cascades, mirrored in the cache so children disappear immediately. */
+const CHILDREN: Partial<Record<ListTable, { table: ListTable; fk: string }>> = {
+  learning_tracks: { table: 'learning_goals', fk: 'track_id' },
+  learning_goals: { table: 'learning_topics', fk: 'goal_id' },
+}
+function removeCascade(table: ListTable, ids: Set<string>) {
+  const child = CHILDREN[table]
+  if (child) {
+    const childIds = new Set<string>()
+    queryClient.setQueryData<(Row & Record<string, unknown>)[]>([child.table], (old) =>
+      (old ?? []).filter((r) => (ids.has(r[child.fk] as string) ? (childIds.add(r.id), false) : true)))
+    if (childIds.size) removeCascade(child.table, childIds)
+  }
+  if (table === 'learning_topics') // tasks.topic_id is "on delete set null"
+    queryClient.setQueryData<(Row & { topic_id?: string | null })[]>(['tasks'], (old) =>
+      old?.map((t) => (t.topic_id && ids.has(t.topic_id) ? { ...t, topic_id: null } : t)))
 }
 const pick = (table: ListTable, row: Record<string, unknown>) =>
   Object.fromEntries(COLUMNS[table].filter((c) => c in row).map((c) => [c, row[c]]))
@@ -62,6 +83,20 @@ queryClient.setMutationDefaults(['upsert'], {
   scope: SYNC_SCOPE,
 })
 
+export type UpsertManyVars = { table: ListTable; rows: (Row & Record<string, unknown>)[] }
+queryClient.setMutationDefaults(['upsertMany'], {
+  mutationFn: async ({ table, rows }: UpsertManyVars) => {
+    const { error } = await supabase.from(table).upsert(rows.map((r) => pick(table, r)))
+    if (error) throw error
+  },
+  onMutate: async ({ table, rows }: UpsertManyVars) => {
+    await queryClient.cancelQueries({ queryKey: [table] })
+    queryClient.setQueryData<Row[]>([table], (old) => rows.reduce((acc, r) => upsertById(acc, r), old ?? []))
+  },
+  onError: (e: unknown, { table }: UpsertManyVars) => reportError(e, 'items', [table]),
+  scope: SYNC_SCOPE,
+})
+
 export type DeleteVars = { table: ListTable; id: string }
 queryClient.setMutationDefaults(['delete'], {
   mutationFn: async ({ table, id }: DeleteVars) => {
@@ -71,6 +106,7 @@ queryClient.setMutationDefaults(['delete'], {
   onMutate: async ({ table, id }: DeleteVars) => {
     await queryClient.cancelQueries({ queryKey: [table] })
     queryClient.setQueryData<Row[]>([table], (old) => (old ?? []).filter((r) => r.id !== id))
+    removeCascade(table, new Set([id]))
   },
   onError: (e: unknown, { table }: DeleteVars) => reportError(e, 'delete', [table]),
   scope: SYNC_SCOPE,

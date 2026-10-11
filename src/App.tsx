@@ -11,13 +11,15 @@ import TodayPage from './pages/TodayPage'
 const RoutinesPage = preloadable(() => import('./pages/RoutinesPage'))
 const StatsPage = preloadable(() => import('./pages/StatsPage'))
 const SettingsPage = preloadable(() => import('./pages/SettingsPage'))
+const LearningPage = preloadable(() => import('./pages/LearningPage'))
+const TrackPage = preloadable(() => import('./pages/TrackPage'))
 
 /** After first paint, warm the other chunks so navigation and dialogs never wait. */
 function usePrefetch(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
     const idle = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1500))
-    const id = idle(() => [RoutinesPage, StatsPage, SettingsPage, EditorSheets, CommandPalette].forEach((c) => c.preload()))
+    const id = idle(() => [RoutinesPage, LearningPage, TrackPage, StatsPage, SettingsPage, EditorSheets, CommandPalette].forEach((c) => c.preload()))
     return () => window.cancelIdleCallback?.(id as number)
   }, [enabled])
 }
@@ -35,6 +37,8 @@ export default function App() {
             <Route element={<AppShell />}>
               <Route index element={<TodayPage />} />
               <Route path="routines" element={<RoutinesPage />} />
+              <Route path="learning" element={<LearningPage />} />
+              <Route path="learning/:trackId" element={<TrackPage />} />
               <Route path="stats" element={<StatsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
