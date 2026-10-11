@@ -1,8 +1,44 @@
 import { defineConfig } from 'vitest/config'
+import { loadEnv, type Plugin } from 'vite'
+import { createHash } from 'node:crypto'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
+
+/**
+ * Production Content-Security-Policy as a <meta> tag: only our own scripts (plus the exact inline theme
+ * script, by hash) may run, and the app may only talk to itself and Supabase. frame-ancestors can't be
+ * set from <meta>, so vercel.json adds it (and X-Frame-Options) as headers.
+ */
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'csp-meta',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const env = loadEnv(ctx.server?.config.mode ?? 'production', process.cwd(), 'VITE_')
+        const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+          .map((m) => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`)
+        const csp = [
+          "default-src 'self'",
+          `script-src 'self' ${hashes.join(' ')}`,
+          `connect-src 'self' ${env.VITE_SUPABASE_URL}`,
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob:",
+          "font-src 'self'",
+          "worker-src 'self'",
+          "manifest-src 'self'",
+          "object-src 'none'",
+          "base-uri 'none'",
+          "form-action 'self'",
+        ].join('; ')
+        return html.replace('<head>', `<head>\n    <meta http-equiv="Content-Security-Policy" content="${csp}" />`)
+      },
+    },
+  }
+}
 
 export default defineConfig({
   resolve: {
@@ -24,6 +60,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    contentSecurityPolicy(),
     react(),
     tailwindcss(),
     VitePWA({

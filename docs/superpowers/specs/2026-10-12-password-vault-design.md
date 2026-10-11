@@ -65,6 +65,9 @@ All binary values are base64url text. No plaintext columns besides ids/timestamp
 - Lost passkey **and** recovery key → vault unrecoverable (by design).
 - Domain change → passkeys stop matching; unlock with recovery key and enroll a new passkey.
 - Device without PRF → recovery-key unlock only on that device.
+- Replacing the recovery key re-wraps the same Vault Key: the old key no longer opens the live vault, but would
+  still open an *old copy* of the wrapped key (e.g. a backup taken before the change). A full re-key (new VK,
+  re-encrypt all entries, re-enroll passkeys) is a possible v2 if that threat matters.
 
 ## Testing
 

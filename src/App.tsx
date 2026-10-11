@@ -13,7 +13,7 @@ const StatsPage = preloadable(() => import('./pages/StatsPage'))
 const SettingsPage = preloadable(() => import('./pages/SettingsPage'))
 const LearningPage = preloadable(() => import('./pages/LearningPage'))
 const TrackPage = preloadable(() => import('./pages/TrackPage'))
-const VaultCheck = preloadable(() => import('./pages/VaultCheck')) // throwaway device test
+const VaultPage = preloadable(() => import('./pages/VaultPage'))
 
 /** After first paint, warm the other chunks so navigation and dialogs never wait. */
 function usePrefetch(enabled: boolean) {
@@ -28,7 +28,6 @@ function usePrefetch(enabled: boolean) {
 export default function App() {
   const { session, loading } = useAuth()
   usePrefetch(!!session)
-  if (location.pathname === '/vault-check') return <Suspense fallback={null}><VaultCheck /></Suspense>
   if (loading) return null
   if (!session) return <LoginPage />
   return (
@@ -43,6 +42,7 @@ export default function App() {
               <Route path="learning/:trackId" element={<TrackPage />} />
               <Route path="stats" element={<StatsPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="settings/passwords" element={<VaultPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

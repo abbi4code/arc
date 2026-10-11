@@ -20,7 +20,7 @@ export const persister = createAsyncStoragePersister({
 })
 
 type Row = { id: string }
-export type ListTable = 'tasks' | 'routines' | 'learning_tracks' | 'learning_goals' | 'learning_topics'
+export type ListTable = 'tasks' | 'routines' | 'learning_tracks' | 'learning_goals' | 'learning_topics' | 'vault_items'
 
 // Only columns the client owns; server fills user_id / timestamps.
 const COLUMNS: Record<ListTable, string[]> = {
@@ -29,6 +29,7 @@ const COLUMNS: Record<ListTable, string[]> = {
   learning_tracks: ['id', 'title', 'color', 'status', 'sort_order'],
   learning_goals: ['id', 'track_id', 'title', 'starts_on', 'target_date', 'sort_order'],
   learning_topics: ['id', 'goal_id', 'title', 'notes', 'done_at', 'sort_order'],
+  vault_items: ['id', 'ciphertext', 'iv', 'version'], // already encrypted on-device
 }
 
 /** Server-side cascades, mirrored in the cache so children disappear immediately. */
@@ -79,7 +80,7 @@ queryClient.setMutationDefaults(['upsert'], {
     await queryClient.cancelQueries({ queryKey: [table] })
     queryClient.setQueryData<Row[]>([table], (old) => upsertById(old, row))
   },
-  onError: (e: unknown, { table, row }: UpsertVars) => reportError(e, `"${String(row.title ?? 'item')}"`, [table]),
+  onError: (e: unknown, { table, row }: UpsertVars) => reportError(e, row.title ? `"${String(row.title)}"` : 'item', [table]),
   scope: SYNC_SCOPE,
 })
 

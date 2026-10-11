@@ -21,6 +21,23 @@ export const useRoutines = () => useQuery({ queryKey: ['routines'], queryFn: () 
 export const useTasks = () => useQuery({ queryKey: ['tasks'], queryFn: () => fetchAll<Task>('tasks') })
 export const useTracks = () => useQuery({ queryKey: ['learning_tracks'], queryFn: () => fetchAll<LearningTrack>('learning_tracks') })
 export const useGoals = () => useQuery({ queryKey: ['learning_goals'], queryFn: () => fetchAll<LearningGoal>('learning_goals') })
+export interface VaultRow { user_id: string; recovery_wrapped_key: string; recovery_iv: string; version: number }
+export interface VaultPasskeyRow { id: string; credential_id: string; prf_salt: string; wrapped_key: string; iv: string; label: string; created_at: string }
+export interface VaultItemRow { id: string; ciphertext: string; iv: string; version: number; updated_at?: string }
+export const useVault = () =>
+  useQuery({
+    queryKey: ['vault'],
+    queryFn: async () => {
+      const [v, p] = await Promise.all([
+        supabase.from('vault').select('*').maybeSingle(),
+        supabase.from('vault_passkeys').select('*').order('created_at'),
+      ])
+      if (v.error) throw v.error
+      if (p.error) throw p.error
+      return { vault: v.data as VaultRow | null, passkeys: (p.data ?? []) as VaultPasskeyRow[] }
+    },
+  })
+export const useVaultItems = () => useQuery({ queryKey: ['vault_items'], queryFn: () => fetchAll<VaultItemRow>('vault_items') })
 export const useTopics = () => useQuery({ queryKey: ['learning_topics'], queryFn: () => fetchAll<LearningTopic>('learning_topics') })
 
 export function useLogs() {
@@ -77,6 +94,8 @@ export function useMutations() {
     deleteTrack: (id: string) => remove.mutate({ table: 'learning_tracks', id }),
     deleteGoal: (id: string) => remove.mutate({ table: 'learning_goals', id }),
     deleteTopic: (id: string) => remove.mutate({ table: 'learning_topics', id }),
+    saveVaultItem: (r: VaultItemRow) => upsert.mutate({ table: 'vault_items', row: row(r) }),
+    deleteVaultItem: (id: string) => remove.mutate({ table: 'vault_items', id }),
     deleteTask: (id: string) => remove.mutate({ table: 'tasks', id }),
     deleteRoutine: (id: string) => remove.mutate({ table: 'routines', id }),
     setRoutineDone: (routine_id: string, date: string, done: boolean) =>

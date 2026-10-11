@@ -10,6 +10,14 @@ Personal routine tracker + day planner. Website and installable PWA, synced thro
 - Works offline: edits queue locally and sync in order on reconnect.
 - Themes: Midnight, Dusk, Forest, Sepia, Light, System (contrast-tested in `src/lib/themes.test.ts`).
 
+## Passwords (Settings → Passwords)
+
+End-to-end encrypted vault: entries are encrypted on-device (AES-256-GCM) with a Vault Key that is stored
+only wrapped by a Face ID / Touch ID passkey (WebAuthn PRF) or by your recovery key. Supabase, the service
+role key and Vercel only ever see ciphertext. Auto-locks after 3 min idle, ~30 s in the background, or when
+you leave the screen. Losing both the passkey and the recovery key means the vault can't be recovered.
+Design: `docs/superpowers/specs/2026-10-12-password-vault-design.md`.
+
 ## Run
 
 ```bash

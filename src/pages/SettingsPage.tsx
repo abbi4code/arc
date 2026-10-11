@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Check as CheckIcon } from 'lucide-react'
+import { Check as CheckIcon, ChevronRight, KeyRound } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { del } from 'idb-keyval'
 import { toast } from 'sonner'
 import { Button } from '@/components/primitives'
@@ -44,6 +45,18 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 md:px-6">
       <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+
+      <section className="mt-8">
+        <h2 className="mb-2 text-xs font-medium text-muted">Security</h2>
+        <Link to="/settings/passwords" className="flex items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 transition-colors hover:bg-panel-2">
+          <KeyRound size={16} className="text-accent" />
+          <span className="flex-1">
+            <span className="block text-sm md:text-[13px]">Passwords</span>
+            <span className="block text-xs text-faint">End-to-end encrypted · unlock with Face ID</span>
+          </span>
+          <ChevronRight size={15} className="text-faint" />
+        </Link>
+      </section>
 
       <Section title="Schedule">
         <Row label="Timezone" hint={settings.timezone !== deviceTz ? `This device is on ${deviceTz}` : 'Used for reminders'}>

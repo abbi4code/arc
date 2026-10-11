@@ -141,3 +141,47 @@ test('login · phone', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible()
   await shot(page, 'login-m-verify')
 })
+
+test('vault · phone', async ({ page, context }) => {
+  const u = await tempUser('shots-vault')
+  try {
+    const { data: { session } } = await u.client.auth.getSession()
+    const ref = new URL(env.VITE_SUPABASE_URL).hostname.split('.')[0]
+    await context.addInitScript(([k, v]) => { localStorage.setItem(k, v); localStorage.setItem('theme', 'sepia') }, [`sb-${ref}-auth-token`, JSON.stringify(session)])
+    const cdp = await context.newCDPSession(page)
+    await cdp.send('WebAuthn.enable')
+    await cdp.send('WebAuthn.addVirtualAuthenticator', { options: {
+      protocol: 'ctap2', ctap2Version: 'ctap2_1', transport: 'internal', hasResidentKey: true,
+      hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
+    } })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/settings/passwords')
+    await shot(page, 'vault-m-setup')
+    await page.getByRole('button', { name: 'Create vault with Face ID' }).click()
+    const key = (await page.getByTestId('recovery-key').innerText()).trim()
+    await shot(page, 'vault-m-recovery')
+    await page.getByLabel('Last 4 characters of the recovery key').fill(key.slice(-4))
+    await page.getByRole('button', { name: "I've saved it, continue" }).click()
+    for (const [name, user, cat] of [['HDFC NetBanking', 'cust-1234', 'Bank'], ['Gmail', 'me@gmail.com', 'Email'], ['GitHub', 'octocat', 'Work'], ['SBI YONO', '9876543210', 'Bank']]) {
+      await page.getByRole('button', { name: 'New' }).click()
+      await page.getByLabel('Name', { exact: true }).fill(name)
+      await page.getByLabel('Category').fill(cat)
+      await page.getByLabel('Username / email / customer ID').fill(user)
+      await page.getByLabel('Password', { exact: true }).fill('correct-horse-battery')
+      if (name === 'HDFC NetBanking') {
+        await page.getByRole('button', { name: /Add field/ }).click()
+        await page.getByLabel('Field 1 label').fill('MPIN')
+        await page.getByLabel('Field 1 value').fill('4321')
+        await shot(page, 'vault-m-form')
+      }
+      await page.getByRole('button', { name: 'Save' }).click()
+      if (name === 'HDFC NetBanking') await shot(page, 'vault-m-entry')
+      await page.keyboard.press('Escape')
+    }
+    await shot(page, 'vault-m-list')
+    await page.getByRole('button', { name: 'Lock' }).click()
+    await shot(page, 'vault-m-locked')
+  } finally {
+    await u.remove()
+  }
+})
