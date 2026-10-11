@@ -39,22 +39,32 @@ test('phone: add tasks from the bottom composer, switch list/timeline', async ({
     await composer.press('Enter')
     await expect(page.getByRole('link', { name: 'Open link for "Two Sum"' })).toHaveAttribute('href', 'https://leetcode.com/problems/two-sum/')
 
-    await expect(page.getByRole('button', { name: /Read docs/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Call bank/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Read docs/ }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /Call bank/ }).first()).toBeVisible()
     await expect.poll(async () => (await admin.from('tasks').select('title').eq('user_id', u.id)).data?.map((t: { title: string }) => t.title).sort())
       .toEqual(['Call bank', 'Read docs', 'Two Sum'])
 
     await composer.blur()
     await expect(tabbar).toBeVisible()
 
+    // Trash icon on each task row; Undo restores it
+    await page.getByRole('button', { name: 'Delete "Call bank"', exact: true }).tap()
+    await expect(page.getByRole('button', { name: /Call bank/ })).toHaveCount(0)
+    await expect.poll(async () => (await admin.from('tasks').select('id').eq('user_id', u.id).eq('title', 'Call bank')).data?.length).toBe(0)
+    await page.getByRole('button', { name: 'Undo' }).tap()
+    await expect(page.getByRole('button', { name: /Call bank/ }).first()).toBeVisible()
+    await expect.poll(async () => (await admin.from('tasks').select('id').eq('user_id', u.id).eq('title', 'Call bank')).data?.length).toBe(1)
+    await page.getByRole('button', { name: 'Delete "Read docs"', exact: true }).tap()
+    await expect.poll(async () => (await admin.from('tasks').select('id').eq('user_id', u.id).eq('title', 'Read docs')).data?.length).toBe(0)
+
     // List / Timeline switch (remembered)
     await page.getByRole('tab', { name: 'Timeline' }).tap()
     await expect(page.getByTestId('timeline')).toBeVisible()
-    await expect(page.getByRole('button', { name: /Call bank/ })).toBeHidden()
+    await expect(page.getByRole('button', { name: /Call bank/ }).first()).toBeHidden()
     await page.reload()
     await expect(page.getByTestId('timeline')).toBeVisible()
     await page.getByRole('tab', { name: 'List' }).tap()
-    await expect(page.getByRole('button', { name: /Call bank/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Call bank/ }).first()).toBeVisible()
   } finally {
     await u.remove()
   }

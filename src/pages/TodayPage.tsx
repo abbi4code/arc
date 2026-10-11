@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, ArrowUp, CalendarRange, ChevronLeft, ChevronRight, CornerDownLeft, GraduationCap, ListChecks } from 'lucide-react'
+import { ArrowRight, ArrowUp, CalendarRange, ChevronLeft, ChevronRight, CornerDownLeft, GraduationCap, ListChecks, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button, Check, Kbd } from '@/components/primitives'
 import { Timeline, type Block } from '@/components/Timeline'
 import { useEditor } from '@/components/Editor'
@@ -40,7 +41,7 @@ export default function TodayPage() {
   const { data: routines = [] } = useRoutines()
   const { data: tasks = [] } = useTasks()
   const { keys: logKeys } = useLogs()
-  const { saveTask, setTaskDone, setRoutineDone } = useMutations()
+  const { saveTask, setTaskDone, setRoutineDone, deleteTask } = useMutations()
   const { data: tracks = [] } = useTracks()
   const { data: goals = [] } = useGoals()
   const { data: topics = [] } = useTopics()
@@ -78,6 +79,11 @@ export default function TodayPage() {
       : setTaskDone(i.task, !i.done)
   const open = (i: Item) => (i.kind === 'routine' ? editRoutine(i.routine) : editTask(i.task))
   const moveToToday = (t: Task) => saveTask({ ...t, date: today })
+  // Delete right away; the toast's Undo puts the exact same row back (same id, same queue).
+  const removeTask = (t: Task) => {
+    deleteTask(t.id)
+    toast(`Deleted “${t.title}”`, { action: { label: 'Undo', onClick: () => saveTask(t) }, duration: 6000 })
+  }
 
   const blocks: Block[] = [
     ...due.filter((r) => r.start_time).map((r) => ({
@@ -113,6 +119,8 @@ export default function TodayPage() {
         case 'k': if (items.length) move(cursor - 1); break
         case 'x': if (items[cursor]) { e.preventDefault(); toggle(items[cursor]) } break
         case 'Enter': if (items[cursor]) { e.preventDefault(); open(items[cursor]) } break
+        case 'Delete':
+        case 'Backspace': { const it = items[cursor]; if (it?.kind === 'task') { e.preventDefault(); removeTask(it.task) } break }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -197,7 +205,7 @@ export default function TodayPage() {
                   <Row
                     key={task.id} item={item} focused={items[cursor] && itemKey(items[cursor]) === itemKey(item)}
                     rowRef={(el) => (rowRefs.current[itemKey(item)] = el)}
-                    onToggle={() => toggle(item)} onOpen={() => open(item)}
+                    onToggle={() => toggle(item)} onOpen={() => open(item)} onDelete={() => removeTask(task)}
                     meta={fmt(task.date, { month: 'short', day: 'numeric' })}
                     trailing={
                       <button onClick={(e) => { e.stopPropagation(); moveToToday(task) }} className="flex shrink-0 items-center gap-1 text-xs text-muted hover:text-fg cursor-pointer md:opacity-0 md:group-hover:opacity-100" aria-label="Move to today">
@@ -246,7 +254,7 @@ export default function TodayPage() {
               return (
                 <Row key={task.id} item={item} focused={items[cursor] && itemKey(items[cursor]) === itemKey(item)}
                   rowRef={(el) => (rowRefs.current[itemKey(item)] = el)} onToggle={() => toggle(item)} onOpen={() => open(item)}
-                  chip={task.topic_id ? topicLabel.get(task.topic_id) : undefined} />
+                  chip={task.topic_id ? topicLabel.get(task.topic_id) : undefined} onDelete={() => removeTask(task)} />
               )
             })}
           </Group>}
@@ -394,8 +402,8 @@ function Group({ title, count, empty, action, children }: { title: string; count
   )
 }
 
-function Row({ item, onToggle, onOpen, meta, trailing, focused, rowRef, chip }: {
-  item: Item; onToggle: () => void; onOpen: () => void; meta?: string; trailing?: React.ReactNode; focused?: boolean; chip?: string
+function Row({ item, onToggle, onOpen, onDelete, meta, trailing, focused, rowRef, chip }: {
+  item: Item; onToggle: () => void; onOpen: () => void; onDelete?: () => void; meta?: string; trailing?: React.ReactNode; focused?: boolean; chip?: string
   rowRef: (el: HTMLDivElement | null) => void
 }) {
   const data = item.kind === 'routine' ? item.routine : item.task
@@ -427,6 +435,17 @@ function Row({ item, onToggle, onOpen, meta, trailing, focused, rowRef, chip }: 
       {trailing}
       {meta && <span className="shrink-0 text-xs text-danger/80">{meta}</span>}
       {time && <span className="tabular shrink-0 font-mono text-[11px] text-faint">{time}</span>}
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete() }}
+          aria-label={`Delete "${data.title}"`}
+          className="-mr-1 grid size-9 shrink-0 place-items-center rounded-md text-faint transition-colors cursor-pointer hover:bg-danger/10 hover:text-danger
+                     md:size-7 md:opacity-0 md:group-hover:opacity-100 md:group-focus-visible:opacity-100 md:focus-visible:opacity-100"
+        >
+          <Trash2 size={15} />
+        </button>
+      )}
     </div>
   )
 }
