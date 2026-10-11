@@ -1,10 +1,12 @@
 import { formatHM } from './dates'
+import { isLink, topicFromUrl } from './links'
 
 export interface QuickAdd {
   title: string
   startTime: string | null // 'HH:MM'
   durationMin: number | null
   dayOffset: number // 0 = selected day, 1 = the day after
+  url: string | null // a pasted link, kept in the task notes
 }
 
 /** '10:00', '9:15am', '6pm', '@10' → minutes since midnight, or null */
@@ -36,8 +38,10 @@ export function parseQuickAdd(input: string): QuickAdd {
   let start: number | null = null
   let duration: number | null = null
   let dayOffset: number | null = null
+  let url: string | null = null
 
   for (const tok of input.trim().split(/\s+/).filter(Boolean)) {
+    if (url === null && isLink(tok)) { url = topicFromUrl(tok)!.url; continue }
     const lower = tok.toLowerCase()
     if (dayOffset === null && /^(today|tod)$/.test(lower)) { dayOffset = 0; continue }
     if (dayOffset === null && /^(tomorrow|tmr|tmrw)$/.test(lower)) { dayOffset = 1; continue }
@@ -60,9 +64,10 @@ export function parseQuickAdd(input: string): QuickAdd {
   }
 
   return {
-    title: rest.join(' '),
+    title: rest.join(' ') || (url ? topicFromUrl(url)!.title : ''),
     startTime: start === null ? null : formatHM(start),
     durationMin: duration,
     dayOffset: dayOffset ?? 0,
+    url,
   }
 }

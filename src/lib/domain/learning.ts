@@ -1,5 +1,6 @@
 import type { ISODate, LearningGoal, LearningTopic, LearningTrack } from '../types'
 import { addDaysISO, diffDaysISO } from './dates'
+import { topicFromUrl } from './links'
 
 export type GoalStatus = 'done' | 'overdue' | 'behind' | 'on-track'
 
@@ -29,13 +30,20 @@ export function goalStatus(goal: Pick<LearningGoal, 'starts_on' | 'target_date'>
   return { status, progress, expected }
 }
 
-/** One topic per non-empty line; strips bullets/numbering and reads markdown checkboxes. */
-export function parseTopicLines(text: string): { title: string; done: boolean }[] {
+/**
+ * One topic per non-empty line; strips bullets/numbering and reads markdown checkboxes.
+ * A line that is just a link becomes a readable title ("Number of Islands") and keeps the link.
+ */
+export function parseTopicLines(text: string): { title: string; done: boolean; url?: string }[] {
   return text
     .split(/\r?\n/)
     .map((line) => line.match(/^\s*(?:[-*•]\s+|\d+[.)]\s+)?(?:\[([ xX])\]\s*)?(.*?)\s*$/)!)
     .filter((m) => m[2].length > 0)
-    .map((m) => ({ title: m[2], done: m[1]?.toLowerCase() === 'x' }))
+    .map((m) => {
+      const done = m[1]?.toLowerCase() === 'x'
+      const link = topicFromUrl(m[2])
+      return link ? { title: link.title, done, url: link.url } : { title: m[2], done }
+    })
 }
 
 export const DUE_SOON_DAYS = 7

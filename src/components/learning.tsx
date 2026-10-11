@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { ArrowUpRight } from 'lucide-react'
+import { linkSource } from '@/lib/domain/links'
 import type { GoalStatus } from '@/lib/domain/learning'
 import { diffDaysISO } from '@/lib/domain/dates'
 import { cn } from '@/lib/ui'
@@ -44,5 +46,31 @@ export function Linkified({ text }: { text: string }): ReactNode {
         {part.replace(/^https?:\/\/(www\.)?/, '')}
       </a>
     ) : <span key={i}>{part}</span>,
+  )
+}
+
+/** One-tap "open link" for rows; doesn't trigger the row's own click. */
+export function OpenLink({ url, label, showSource = true }: { url: string; label: string; showSource?: boolean }) {
+  return (
+    <a
+      href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+      aria-label={`Open link for "${label}"`} title={url}
+      className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-1 text-xs text-muted hover:bg-panel hover:text-accent"
+    >
+      {showSource && <span className="hidden max-w-24 truncate sm:inline">{linkSource(url)}</span>}
+      <ArrowUpRight size={14} />
+    </a>
+  )
+}
+
+/** Clickable list of every link found in some notes. */
+export function LinkList({ text }: { text: string }) {
+  const lines = text.split('\n').filter((l) => /https?:\/\//.test(l))
+  if (!lines.length) return null
+  return (
+    <div className="-mt-2 grid gap-1 text-xs text-muted">
+      <span className="font-medium">Links</span>
+      <p className="whitespace-pre-wrap leading-relaxed"><Linkified text={lines.join('\n')} /></p>
+    </div>
   )
 }

@@ -34,10 +34,15 @@ test('phone: add tasks from the bottom composer, switch list/timeline', async ({
     await expect(composer).toBeFocused()
     await expect(composer).toHaveValue('')
 
+    await composer.fill('https://leetcode.com/problems/two-sum/ 9pm')
+    await expect(page.locator('form').filter({ has: composer }).getByText('🔗 LeetCode')).toBeVisible()
+    await composer.press('Enter')
+    await expect(page.getByRole('link', { name: 'Open link for "Two Sum"' })).toHaveAttribute('href', 'https://leetcode.com/problems/two-sum/')
+
     await expect(page.getByRole('button', { name: /Read docs/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /Call bank/ })).toBeVisible()
     await expect.poll(async () => (await admin.from('tasks').select('title').eq('user_id', u.id)).data?.map((t: { title: string }) => t.title).sort())
-      .toEqual(['Call bank', 'Read docs'])
+      .toEqual(['Call bank', 'Read docs', 'Two Sum'])
 
     await composer.blur()
     await expect(tabbar).toBeVisible()

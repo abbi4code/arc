@@ -45,6 +45,12 @@ describe('parseTopicLines', () => {
       { title: 'Arrays', done: true }, { title: 'Trees', done: false }, { title: 'Heaps', done: true },
     ])
   })
+  it('turns pasted links into readable topics that keep the link', () => {
+    expect(parseTopicLines('https://leetcode.com/problems/number-of-islands/\n- [x] https://leetcode.com/problems/two-sum')).toEqual([
+      { title: 'Number of Islands', done: false, url: 'https://leetcode.com/problems/number-of-islands/' },
+      { title: 'Two Sum', done: true, url: 'https://leetcode.com/problems/two-sum' },
+    ])
+  })
   it('keeps a single plain line as-is (numbers inside titles too)', () => {
     expect(parseTopicLines('LC 200. Number of Islands')).toEqual([{ title: 'LC 200. Number of Islands', done: false }])
   })

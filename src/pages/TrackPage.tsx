@@ -3,7 +3,8 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { CalendarPlus, ChevronDown, ChevronLeft, NotebookPen, Pencil, Plus } from 'lucide-react'
 import { Button, Check } from '@/components/primitives'
 import { useEditor } from '@/components/Editor'
-import { ProgressBar, StatusBadge, dueLabel } from '@/components/learning'
+import { OpenLink, ProgressBar, StatusBadge, dueLabel } from '@/components/learning'
+import { firstUrl } from '@/lib/domain/links'
 import { useGoals, useMutations, useTasks, useTopics, useTracks } from '@/lib/data'
 import { todayISO } from '@/lib/domain/dates'
 import { goalProgress, goalStatus, parseTopicLines } from '@/lib/domain/learning'
@@ -111,6 +112,8 @@ function TopicRow({ topic, color, plannedTask }: { topic: LearningTopic; color: 
   const { editTopic, editTask } = useEditor()
   const navigate = useNavigate()
   const done = !!topic.done_at
+  const url = firstUrl(topic.notes)
+  const hasMoreNotes = !!topic.notes && topic.notes.trim() !== url
   return (
     <div
       role="button" tabIndex={0} onClick={() => editTopic(topic)}
@@ -120,7 +123,8 @@ function TopicRow({ topic, color, plannedTask }: { topic: LearningTopic; color: 
       <Check checked={done} color={color} label={`Mark "${topic.title}" ${done ? 'not done' : 'done'}`}
         onChange={() => saveTopic({ ...topic, done_at: done ? null : new Date().toISOString() })} />
       <span className={cn('min-w-0 flex-1 truncate text-sm md:text-[13px]', done && 'text-muted line-through')}>{topic.title}</span>
-      {topic.notes && <NotebookPen size={13} className="shrink-0 text-faint" aria-label="Has notes" />}
+      {hasMoreNotes && <NotebookPen size={13} className="shrink-0 text-faint" aria-label="Has notes" />}
+      {url && <OpenLink url={url} label={topic.title} />}
       {!done && (plannedTask ? (
         <button
           onClick={(e) => { e.stopPropagation(); navigate(plannedTask.date === todayISO() ? '/' : `/?d=${plannedTask.date}`) }}
@@ -130,7 +134,7 @@ function TopicRow({ topic, color, plannedTask }: { topic: LearningTopic; color: 
         </button>
       ) : (
         <button
-          onClick={(e) => { e.stopPropagation(); editTask({ title: topic.title, date: todayISO(), topic_id: topic.id }) }}
+          onClick={(e) => { e.stopPropagation(); editTask({ title: topic.title, date: todayISO(), topic_id: topic.id, notes: url }) }}
           className="flex shrink-0 items-center gap-1 rounded px-1.5 py-1 text-xs text-muted hover:bg-panel hover:text-fg cursor-pointer md:opacity-0 md:group-hover:opacity-100 md:group-focus-visible:opacity-100"
           aria-label={`Plan "${topic.title}"`}
         >
@@ -149,7 +153,7 @@ function AddTopics({ goalId, nextOrder }: { goalId: string; nextOrder: number })
   const add = (items = parsed) => {
     if (!items.length) return
     saveTopics(items.map((t, i) => ({
-      id: crypto.randomUUID(), goal_id: goalId, title: t.title, notes: null,
+      id: crypto.randomUUID(), goal_id: goalId, title: t.title, notes: t.url ?? null,
       done_at: t.done ? new Date().toISOString() : null, sort_order: nextOrder + i,
     })))
     setValue('')
@@ -166,7 +170,7 @@ function AddTopics({ goalId, nextOrder }: { goalId: string; nextOrder: number })
       <Plus size={14} className="shrink-0 text-faint" />
       <input
         value={value} onChange={(e) => setValue(e.target.value)} onPaste={onPaste}
-        placeholder="Add a topic… (paste a list to add many)"
+        placeholder="Add a topic or paste links (one per line)"
         aria-label="Add topics"
         className="h-10 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-faint md:h-8 md:text-[13px]"
       />

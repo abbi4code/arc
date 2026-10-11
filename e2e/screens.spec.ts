@@ -41,7 +41,7 @@ async function seed(client: any) {
   const { data: ts } = await client.from('learning_topics').insert([
     topic(0, 'BFS / DFS', true, null, 0), topic(0, 'Topological sort', true, null, 1),
     topic(0, 'Union-Find', false, 'https://leetcode.com/tag/union-find/', 2), topic(0, 'Dijkstra', false, null, 3), topic(0, 'Minimum spanning tree (Kruskal / Prim)', false, null, 4),
-    topic(1, 'Knapsack', true), topic(1, 'LIS'), topic(1, 'Interval DP'),
+    topic(1, 'Knapsack', true), topic(1, 'Longest Increasing Subsequence', false, 'https://leetcode.com/problems/longest-increasing-subsequence/'), topic(1, 'Interval DP'),
     topic(2, 'Two pointers', true), topic(2, 'Sliding window'),
     topic(3, 'Attention', true), topic(3, 'Tokenization'), topic(3, 'Train a tiny GPT'),
   ]).select()
@@ -86,9 +86,9 @@ for (const theme of ['midnight', 'sepia']) {
       await page.keyboard.press('Escape')
 
       await page.getByRole('link', { name: 'Routines' }).last().click()
-      await expect(page.getByText('DSA practice')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Routines', level: 1 })).toBeVisible()
       await shot(page, `${theme}-m-routines`)
-      await page.getByText('DSA practice').click()
+      await page.getByRole('button', { name: /^DSA practice Weekdays/ }).click()
       await shot(page, `${theme}-m-routine-dialog`)
       await page.keyboard.press('Escape')
 
@@ -98,6 +98,8 @@ for (const theme of ['midnight', 'sepia']) {
       await page.getByRole('link', { name: /DSA/ }).click()
       await expect(page.getByText('Union-Find')).toBeVisible()
       await shot(page, `${theme}-m-track`)
+      await page.getByText('Longest Increasing Subsequence').scrollIntoViewIfNeeded()
+      await shot(page, `${theme}-m-track-links`)
       await page.getByText('Union-Find').click()
       await shot(page, `${theme}-m-topic`)
       await page.keyboard.press('Escape')

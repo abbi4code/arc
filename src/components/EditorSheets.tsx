@@ -6,7 +6,7 @@ import type { Editing } from './Editor'
 import { useGoals, useMutations, useTopics, useTracks } from '@/lib/data'
 import { todayISO } from '@/lib/domain/dates'
 import type { LearningGoal, LearningTopic, LearningTrack, Routine, Task, TrackStatus } from '@/lib/types'
-import { Linkified } from './learning'
+import { LinkList } from './learning'
 import { useNavigate } from 'react-router-dom'
 import { COLORS, WEEKDAY_NAMES, cn } from '@/lib/ui'
 
@@ -93,9 +93,10 @@ function TaskForm({ initial, onDone }: { initial: Partial<Task>; onDone: () => v
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           className="w-full resize-none rounded-md border border-line bg-panel-2 px-3 py-2 text-base outline-none md:text-[13px] placeholder:text-faint focus:border-accent/60"
-          placeholder="Optional"
+          placeholder="Optional · links become clickable"
         />
       </Field>
+      <LinkList text={notes} />
       <div className="flex items-center justify-between pt-1">
         {initial.id ? (
           <Button type="button" variant="danger" size="sm" onClick={() => { deleteTask(initial.id!); onDone() }}>
@@ -362,11 +363,7 @@ function TopicForm({ initial, onDone }: { initial: LearningTopic; onDone: () => 
           className="w-full resize-y rounded-md border border-line bg-panel-2 px-3 py-2 text-base outline-none placeholder:text-faint focus:border-accent/60 md:text-[13px]"
         />
       </Field>
-      {/https?:\/\//.test(notes) && (
-        <div className="-mt-2 grid gap-1 text-xs text-muted"><span className="font-medium">Links</span>
-          <p className="whitespace-pre-wrap leading-relaxed"><Linkified text={notes.split('\n').filter((l) => /https?:\/\//.test(l)).join('\n')} /></p>
-        </div>
-      )}
+      <LinkList text={notes} />
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <Button type="button" variant="danger" size="sm" onClick={() => { deleteTopic(initial.id); onDone() }}><Trash2 size={14} /> Delete</Button>
         <Button type="submit" variant="primary">Save</Button>

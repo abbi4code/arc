@@ -6,7 +6,8 @@ import { Timeline, type Block } from '@/components/Timeline'
 import { useEditor } from '@/components/Editor'
 import { useGoals, useLogs, useMutations, useRoutines, useTasks, useTopics, useTracks } from '@/lib/data'
 import { dueSoonGoals } from '@/lib/domain/learning'
-import { StatusBadge, dueLabel } from '@/components/learning'
+import { OpenLink, StatusBadge, dueLabel } from '@/components/learning'
+import { firstUrl, linkSource } from '@/lib/domain/links'
 import { addDaysISO, diffDaysISO, formatHM, minutesOf, todayISO } from '@/lib/domain/dates'
 import { byScheduleOrder, routinesDueOn } from '@/lib/domain/routines'
 import { dayCompletion, logKey } from '@/lib/domain/stats'
@@ -283,13 +284,14 @@ function useQuickAdd(date: string, onAdd: (t: Task) => void) {
     parsed.dayOffset ? fmt(target, { weekday: 'short', month: 'short', day: 'numeric' }) : null,
     parsed.startTime,
     parsed.durationMin ? formatDuration(parsed.durationMin) : null,
+    parsed.url ? `🔗 ${linkSource(parsed.url)}` : null,
   ].filter(Boolean) as string[]
   const submit = (e?: FormEvent) => {
     e?.preventDefault()
     if (!parsed.title) return
     onAdd({
       id: crypto.randomUUID(), title: parsed.title, date: target, start_time: parsed.startTime,
-      duration_min: parsed.durationMin ?? (parsed.startTime ? 30 : null), notes: null, done_at: null, sort_order: Date.now(),
+      duration_min: parsed.durationMin ?? (parsed.startTime ? 30 : null), notes: parsed.url, done_at: null, sort_order: Date.now(),
     })
     setValue('')
   }
@@ -421,6 +423,7 @@ function Row({ item, onToggle, onOpen, meta, trailing, focused, rowRef, chip }: 
           <GraduationCap size={12} className="shrink-0" /> <span className="truncate">{chip}</span>
         </span>
       )}
+      {item.kind === 'task' && firstUrl(item.task.notes) && <OpenLink url={firstUrl(item.task.notes)!} label={data.title} showSource={false} />}
       {trailing}
       {meta && <span className="shrink-0 text-xs text-danger/80">{meta}</span>}
       {time && <span className="tabular shrink-0 font-mono text-[11px] text-faint">{time}</span>}

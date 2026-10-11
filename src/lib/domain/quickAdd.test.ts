@@ -2,7 +2,7 @@ import { parseQuickAdd } from './quickAdd'
 
 describe('parseQuickAdd', () => {
   it('returns plain title when no tokens', () => {
-    expect(parseQuickAdd('Review PR')).toEqual({ title: 'Review PR', startTime: null, durationMin: null, dayOffset: 0 })
+    expect(parseQuickAdd('Review PR')).toEqual({ title: 'Review PR', startTime: null, durationMin: null, dayOffset: 0, url: null })
   })
   it('parses 24h time and hour duration', () => {
     expect(parseQuickAdd('Deep work 10:00 2h')).toMatchObject({ title: 'Deep work', startTime: '10:00', durationMin: 120 })
@@ -25,6 +25,13 @@ describe('parseQuickAdd', () => {
   })
   it('does not treat numbers inside words as tokens', () => {
     expect(parseQuickAdd('Fix bug #42 in v2h')).toMatchObject({ title: 'Fix bug #42 in v2h', durationMin: null })
+  })
+  it('turns a pasted link into a titled task and keeps the link', () => {
+    expect(parseQuickAdd('https://leetcode.com/problems/two-sum 9pm 30m')).toMatchObject({
+      title: 'Two Sum', startTime: '21:00', durationMin: 30, url: 'https://leetcode.com/problems/two-sum',
+    })
+    expect(parseQuickAdd('Revise https://leetcode.com/problems/two-sum')).toMatchObject({ title: 'Revise', url: 'https://leetcode.com/problems/two-sum' })
+    expect(parseQuickAdd('Review PR')).toMatchObject({ url: null })
   })
   it('rejects invalid times as text', () => {
     expect(parseQuickAdd('Ship 25:00')).toMatchObject({ title: 'Ship 25:00', startTime: null })

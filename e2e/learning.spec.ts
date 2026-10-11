@@ -42,9 +42,26 @@ test('learning: track → goal → pasted topics → plan → done on Today', as
     await expect(page.getByText('0/3')).toBeVisible()
     await expect.poll(async () => (await admin.from('learning_topics').select('id').eq('user_id', u.id)).data?.length).toBe(3)
 
+    // Paste links → readable titles, link kept and openable in one tap
+    await add.evaluate((el) => {
+      const dt = new DataTransfer()
+      dt.setData('text/plain', 'https://leetcode.com/problems/number-of-islands/\nhttps://leetcode.com/problems/network-delay-time/')
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+    })
+    await expect(page.getByText('0/5')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Open link for "Number of Islands"' }))
+      .toHaveAttribute('href', 'https://leetcode.com/problems/number-of-islands/')
+    expect((await topic('Network Delay Time'))?.notes).toBe('https://leetcode.com/problems/network-delay-time/')
+
+    // Plan a link topic → the Today task carries the link
+    await page.getByRole('button', { name: 'Plan "Network Delay Time"', exact: true }).click()
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect.poll(async () => (await admin.from('tasks').select('notes').eq('user_id', u.id).eq('title', 'Network Delay Time')).data?.[0]?.notes)
+      .toBe('https://leetcode.com/problems/network-delay-time/')
+
     // Tick one directly
     await page.getByRole('checkbox', { name: 'Mark "BFS / DFS" done' }).click()
-    await expect(page.getByText('1/3')).toBeVisible()
+    await expect(page.getByText('1/5')).toBeVisible()
 
     // Plan another onto Today at 18:00
     await page.getByRole('button', { name: 'Plan "Dijkstra"', exact: true }).click()
@@ -56,10 +73,11 @@ test('learning: track → goal → pasted topics → plan → done on Today', as
     // Today: nudge strip + chip; completing the task completes the topic
     await page.getByRole('link', { name: 'Today' }).first().click()
     await expect(page.getByRole('heading', { name: /Learning deadlines/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Graphs · DSA/ })).toContainText('1/3')
+    await expect(page.getByRole('button', { name: /Graphs · DSA/ })).toContainText('1/5')
+    await expect(page.getByRole('link', { name: 'Open link for "Network Delay Time"' })).toBeVisible()
     await page.getByRole('checkbox', { name: 'Mark "Dijkstra" done' }).click()
     await expect.poll(async () => !!(await topic('Dijkstra'))?.done_at).toBe(true)
-    await expect(page.getByRole('button', { name: /Graphs · DSA/ })).toContainText('2/3')
+    await expect(page.getByRole('button', { name: /Graphs · DSA/ })).toContainText('2/5')
 
     // …and un-checking reverts it
     await page.getByRole('checkbox', { name: 'Mark "Dijkstra" not done' }).click()
