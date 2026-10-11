@@ -40,13 +40,11 @@ The `scripts/` checks and e2e need `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`.
 
 ### One-time dashboard settings
 
-1. **Sign-in uses a 6-digit email code** (links don't work inside an installed iPhone PWA). In
-   **Authentication → Emails → Templates**, edit **Magic Link** *and* **Confirm signup** so the body shows the code:
-   ```html
-   <h2>Your Winter Arc code</h2>
-   <p>Enter this code to sign in:</p>
-   <p style="font-size:28px;letter-spacing:6px"><strong>{{ .Token }}</strong></p>
-   ```
+1. **Sign-in** emails a link. Inside an installed iPhone app (where tapping a link opens Safari instead),
+   press and hold the link in the email → Copy Link → paste it into the app; on a computer just click it.
+   The same box also accepts a code, so if you later add custom SMTP (free-tier projects can't edit
+   templates on Supabase's default mailer) you can put `{{ .Token }}` in the **Magic Link** and
+   **Confirm signup** templates and type codes instead.
 2. **Authentication → URL Configuration**: Site URL = your Vercel URL.
 3. After your first sign-in, **Authentication → Sign In / Providers → turn off "Allow new users to sign up"** so it stays single-user.
 4. Supabase's built-in mailer only sends to your project's team members and is rate-limited (a few per hour). Fine for one user; add custom SMTP if you ever need more.
