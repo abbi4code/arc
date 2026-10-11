@@ -86,3 +86,28 @@ move overdue. RLS isolation script (second user via service role cannot see rows
 ## Out of scope (v1)
 
 Multi-user/sharing, calendar import, native apps, notes/journal.
+
+---
+
+## Learning (added 2026-10-11)
+
+Tracks (e.g. DSA, AI/ML) → goals with a target date → topic checklists.
+
+| table | key columns |
+|---|---|
+| `learning_tracks` | `title`, `color`, `status` (`active`/`paused`/`completed`), `sort_order` |
+| `learning_goals` | `track_id` (cascade), `title`, `starts_on`, `target_date`, `sort_order` |
+| `learning_topics` | `goal_id` (cascade), `title`, `notes`, `done_at`, `sort_order` |
+| `tasks.topic_id` | nullable FK → `learning_topics` (on delete set null) |
+
+RLS: owner-only; inserts/updates must reference the caller's own parent row (track/goal/topic).
+
+- **Learning tab**: active track cards (progress, next deadline + status); paused/completed under "Archived".
+- **Track page** `/learning/:id`: goals by deadline, each with `done/total · by <date> · <status>`, expandable topic
+  checklist; paste multiple lines → one topic per line; topic sheet with title + notes (URLs clickable) + delete.
+- **Plan**: from a topic, open the task editor prefilled (title, today, topic_id). Task chip `Track · Goal`.
+  Task done ⇒ topic done; task undone ⇒ topic undone. Topic with an open task shows `Planned · <date>`.
+- **Status**: done (all topics) · overdue (past target, not done) · behind (progress < expected − 10pts) · on track.
+  Expected = elapsed / (target − start). A goal with no topics is never "behind".
+- **Today strip**: active-track goals due within 7 days or overdue, with progress + status.
+- ⌘K: New learning track, Go to Learning. No push reminders for goals in v1.
