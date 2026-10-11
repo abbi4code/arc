@@ -113,3 +113,6 @@
   .tabular { font-variant-numeric: tabular-nums; }
   .scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
 }
+
+/* Phone composer: the tab bar steps aside while typing (set by TodayPage). Unlayered on purpose. */
+html[data-composing] .mobile-tabbar { display: none; }

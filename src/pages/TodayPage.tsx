@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, ChevronLeft, ChevronRight, CornerDownLeft, GraduationCap } from 'lucide-react'
+import { ArrowRight, ArrowUp, CalendarRange, ChevronLeft, ChevronRight, CornerDownLeft, GraduationCap, ListChecks } from 'lucide-react'
 import { Button, Check, Kbd } from '@/components/primitives'
 import { Timeline, type Block } from '@/components/Timeline'
 import { useEditor } from '@/components/Editor'
@@ -13,6 +13,7 @@ import { dayCompletion, logKey } from '@/lib/domain/stats'
 import { parseQuickAdd } from '@/lib/domain/quickAdd'
 import type { Routine, Task } from '@/lib/types'
 import { cn, colorOf, formatDuration, isTyping } from '@/lib/ui'
+import { useIsDesktop, useKeyboardOffset } from '@/lib/viewport'
 
 type Item =
   | { kind: 'routine'; routine: Routine; done: boolean }
@@ -117,12 +118,22 @@ export default function TodayPage() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
+  const isDesktop = useIsDesktop()
+  const [view, setViewState] = useState<'list' | 'timeline'>(() => {
+    try { return localStorage.getItem('todayView') === 'timeline' ? 'timeline' : 'list' } catch { return 'list' }
+  })
+  const setView = (v: 'list' | 'timeline') => {
+    setViewState(v)
+    try { localStorage.setItem('todayView', v) } catch { /* storage blocked */ }
+  }
+  const nothingPlanned = items.length === 0 && dueGoals.length === 0
+
   const rel = relativeLabel(date, today)
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0
 
   return (
-    <div className="flex flex-col md:h-full md:min-h-0">
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-4 pb-4 pt-5 md:px-6">
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="flex flex-wrap items-end justify-between gap-x-3 gap-y-3 border-b border-line px-4 pb-3 pt-4 md:px-6 md:pb-4 md:pt-5">
         <div>
           <div className="flex items-center gap-2 text-xs text-muted">
             {rel && <span className="rounded bg-accent/15 px-1.5 py-0.5 font-medium text-accent">{rel}</span>}
@@ -143,11 +154,35 @@ export default function TodayPage() {
             <Button variant="ghost" size="icon" aria-label="Next day" onClick={() => setDate(addDaysISO(date, 1))}><ChevronRight size={16} /></Button>
           </div>
         </div>
+        <div className="flex w-full rounded-lg border border-line bg-panel-2 p-0.5 md:hidden" role="tablist" aria-label="Today view">
+          {([['list', 'List', ListChecks], ['timeline', 'Timeline', CalendarRange]] as const).map(([v, label, Icon]) => (
+            <button
+              key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}
+              className={cn('flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md text-sm transition-colors cursor-pointer',
+                view === v ? 'bg-panel font-medium text-fg shadow-sm' : 'text-muted')}
+            >
+              <Icon size={15} /> {label}
+            </button>
+          ))}
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        <section className="scrollbar-thin border-line px-4 py-4 md:min-h-0 md:overflow-y-auto md:border-r md:px-6">
-          <QuickAdd inputRef={quickAddRef} date={date} onAdd={saveTask} />
+      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <section className={cn(
+          'scrollbar-thin min-h-0 overflow-y-auto border-line px-4 pb-32 pt-4 md:border-r md:px-6 md:pb-4',
+          view === 'timeline' && 'hidden md:block',
+        )}>
+          {isDesktop && <QuickAdd inputRef={quickAddRef} date={date} onAdd={saveTask} />}
+
+          {nothingPlanned && (
+            <div className="grid place-items-center px-6 py-16 text-center">
+              <ListChecks size={22} className="text-faint" />
+              <p className="mt-3 text-sm font-medium">Nothing planned{isToday ? ' yet' : ''}</p>
+              <p className="mt-1 text-[13px] text-muted">
+                {isDesktop ? 'Type above' : 'Type below'}: “Deep work 10:00 2h”, “Gym tomorrow 7am”.
+              </p>
+            </div>
+          )}
 
           {overdue.length > 0 && (
             <Group
@@ -194,7 +229,7 @@ export default function TodayPage() {
             </Group>
           )}
 
-          <Group title="Routines" count={due.length} empty="No routines scheduled for this day.">
+          {due.length > 0 && <Group title="Routines" count={due.length}>
             {due.map((routine) => {
               const item: Item = { kind: 'routine', routine, done: logKeys.has(logKey(routine.id, date)) }
               return (
@@ -202,9 +237,9 @@ export default function TodayPage() {
                   rowRef={(el) => (rowRefs.current[itemKey(item)] = el)} onToggle={() => toggle(item)} onOpen={() => open(item)} />
               )
             })}
-          </Group>
+          </Group>}
 
-          <Group title="Tasks" count={dayTasks.length} empty="Nothing planned yet. Type above to add.">
+          {dayTasks.length > 0 && <Group title="Tasks" count={dayTasks.length}>
             {dayTasks.map((task) => {
               const item: Item = { kind: 'task', task, done: !!task.done_at }
               return (
@@ -213,7 +248,7 @@ export default function TodayPage() {
                   chip={task.topic_id ? topicLabel.get(task.topic_id) : undefined} />
               )
             })}
-          </Group>
+          </Group>}
 
           <p className="mt-8 hidden gap-3 text-[11px] text-faint md:flex">
             <span><Kbd>n</Kbd> add</span><span><Kbd>j</Kbd><Kbd>k</Kbd> move</span><span><Kbd>x</Kbd> done</span>
@@ -221,8 +256,10 @@ export default function TodayPage() {
           </p>
         </section>
 
-        <section className="h-[70dvh] min-h-0 border-t border-line pt-3 md:h-auto md:border-t-0">
+        <section className={cn('min-h-0 pb-28 pt-3 md:pb-0', view === 'list' && 'hidden md:block')}>
           <Timeline
+            // On phones the timeline mounts hidden; remount when shown so it scrolls to "now".
+            key={isDesktop ? 'desktop' : view}
             blocks={blocks}
             isToday={isToday}
             onCreateAt={(m) => editTask({ date, start_time: formatHM(m), duration_min: 30 })}
@@ -231,17 +268,24 @@ export default function TodayPage() {
           />
         </section>
       </div>
+
+      {!isDesktop && <Composer inputRef={quickAddRef} date={date} onAdd={saveTask} />}
     </div>
   )
 }
 
-function QuickAdd({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) => void; inputRef: React.RefObject<HTMLInputElement | null> }) {
+/** Shared quick-add parsing: "Deep work 10:00 2h tomorrow" → task fields + preview chips. */
+function useQuickAdd(date: string, onAdd: (t: Task) => void) {
   const [value, setValue] = useState('')
   const parsed = parseQuickAdd(value)
   const target = addDaysISO(date, parsed.dayOffset)
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
+  const chips = [
+    parsed.dayOffset ? fmt(target, { weekday: 'short', month: 'short', day: 'numeric' }) : null,
+    parsed.startTime,
+    parsed.durationMin ? formatDuration(parsed.durationMin) : null,
+  ].filter(Boolean) as string[]
+  const submit = (e?: FormEvent) => {
+    e?.preventDefault()
     if (!parsed.title) return
     onAdd({
       id: crypto.randomUUID(), title: parsed.title, date: target, start_time: parsed.startTime,
@@ -249,16 +293,72 @@ function QuickAdd({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) =>
     })
     setValue('')
   }
+  return { value, setValue, chips, submit, canSubmit: !!parsed.title }
+}
 
-  const chips = [
-    parsed.dayOffset ? fmt(target, { weekday: 'short', month: 'short', day: 'numeric' }) : null,
-    parsed.startTime,
-    parsed.durationMin ? formatDuration(parsed.durationMin) : null,
-  ].filter(Boolean)
+/**
+ * Phone composer pinned above the tab bar (thumb reach). While focused, the tab bar hides and the
+ * composer rides on top of the keyboard. Enter adds and keeps the keyboard open for the next task.
+ */
+function Composer({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) => void; inputRef: React.RefObject<HTMLInputElement | null> }) {
+  const { value, setValue, chips, submit, canSubmit } = useQuickAdd(date, onAdd)
+  const [focused, setFocused] = useState(false)
+  const keyboard = useKeyboardOffset(focused)
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-composing', focused)
+    return () => document.documentElement.removeAttribute('data-composing')
+  }, [focused])
 
   return (
+    <form
+      onSubmit={submit}
+      className="fixed inset-x-0 z-30 border-t border-line bg-bg/95 px-3 pt-2 backdrop-blur"
+      style={{
+        bottom: focused ? 0 : 'calc(56px + env(safe-area-inset-bottom))',
+        transform: keyboard ? `translateY(${-keyboard}px)` : undefined,
+        paddingBottom: focused ? 'max(0.5rem, env(safe-area-inset-bottom))' : '0.5rem',
+      }}
+    >
+      {chips.length > 0 && (
+        <div className="mb-2 flex gap-1.5 px-1" aria-live="polite">
+          {chips.map((c) => <span key={c} className="tabular rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[11px] text-accent">{c}</span>)}
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(e) => e.key === 'Escape' && (e.currentTarget.blur(), setValue(''))}
+          enterKeyHint="send"
+          autoComplete="off"
+          placeholder="Add a task…  e.g. Gym 7am 1h"
+          aria-label="Quick add task"
+          className="h-11 min-w-0 flex-1 rounded-full border border-line bg-panel px-4 text-base outline-none placeholder:text-faint focus:border-accent/60"
+        />
+        <button
+          type="submit"
+          aria-label="Add task"
+          disabled={!canSubmit}
+          // keep focus (and the keyboard) in the input when tapping send
+          onPointerDown={(e) => e.preventDefault()}
+          className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-accent-fg transition-opacity disabled:opacity-40 cursor-pointer"
+        >
+          <ArrowUp size={18} strokeWidth={2.4} />
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function QuickAdd({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) => void; inputRef: React.RefObject<HTMLInputElement | null> }) {
+  const { value, setValue, chips, submit } = useQuickAdd(date, onAdd)
+  return (
     <form onSubmit={submit} className="mb-6">
-      <div className="flex h-11 items-center gap-2 rounded-lg border border-line bg-panel px-3 md:h-10 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-[var(--ring)]">
+      <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-panel px-3 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-[var(--ring)]">
         <span className="text-faint">+</span>
         <input
           ref={inputRef}
@@ -266,7 +366,7 @@ function QuickAdd({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) =>
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === 'Escape' && (e.currentTarget.blur(), setValue(''))}
           placeholder="Add a task…  e.g. Deep work 10:00 2h"
-          className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-faint md:text-[13px]"
+          className="h-full min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-faint"
           aria-label="Quick add task"
         />
         {chips.map((c) => (
