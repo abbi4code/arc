@@ -68,7 +68,7 @@ test('learning: track → goal → pasted topics → plan → done on Today', as
     await expect(page.getByText('DSA · Graphs')).toBeVisible() // chip in the task editor
     await page.locator('input[type="time"]').fill('18:00')
     await page.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText('Planned · Today')).toBeVisible()
+    await expect(page.locator('[role="button"]', { hasText: 'Dijkstra' }).getByRole('button', { name: 'Planned · Today' })).toBeVisible()
 
     // Today: nudge strip + chip; completing the task completes the topic
     await page.getByRole('link', { name: 'Today' }).first().click()
