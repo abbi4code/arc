@@ -48,7 +48,7 @@ function DurationSelect({ value, onChange }: { value: number; onChange: (n: numb
     <select
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="h-9 w-full rounded-md border border-line bg-panel-2 px-2 text-[13px] outline-none focus:border-accent/60"
+      className="h-10 w-full rounded-md border border-line bg-panel-2 px-2 text-base outline-none focus:border-accent/60 md:h-9 md:text-[13px]"
     >
       {options.map((m) => (
         <option key={m} value={m}>{m === 0 ? 'No duration' : m < 60 ? `${m} min` : `${m / 60} h`}</option>
@@ -82,12 +82,12 @@ function TaskForm({ initial, onDone }: { initial: Partial<Task>; onDone: () => v
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4">
+    <form onSubmit={submit} className="grid grid-cols-1 gap-4">
       <Field label="Title">
         <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What are you working on?" required />
       </Field>
-      <div className="grid grid-cols-3 gap-3">
-        <Field label="Date"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></Field>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="col-span-2 sm:col-span-1"><Field label="Date"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></Field></div>
         <Field label="Start"><Input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
         <Field label="Duration"><DurationSelect value={duration} onChange={setDuration} /></Field>
       </div>
@@ -96,7 +96,7 @@ function TaskForm({ initial, onDone }: { initial: Partial<Task>; onDone: () => v
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          className="w-full resize-none rounded-md border border-line bg-panel-2 px-3 py-2 text-[13px] outline-none placeholder:text-faint focus:border-accent/60"
+          className="w-full resize-none rounded-md border border-line bg-panel-2 px-3 py-2 text-base outline-none md:text-[13px] placeholder:text-faint focus:border-accent/60"
           placeholder="Optional"
         />
       </Field>
@@ -147,12 +147,12 @@ function RoutineForm({ initial, onDone }: { initial: Partial<Routine>; onDone: (
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4">
+    <form onSubmit={submit} className="grid grid-cols-1 gap-4">
       <Field label="Title">
         <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. DSA practice" required />
       </Field>
       <Field label="Repeats on" group>
-        <div className="grid gap-2">
+        <div className="grid grid-cols-1 gap-2">
           <div className="flex gap-1">
             {WEEKDAY_NAMES.map((name, d) => (
               <button
@@ -161,7 +161,7 @@ function RoutineForm({ initial, onDone }: { initial: Partial<Routine>; onDone: (
                 onClick={() => toggleDay(d)}
                 aria-pressed={days.includes(d)}
                 className={cn(
-                  'h-8 flex-1 rounded-md border text-xs font-medium transition-colors cursor-pointer',
+                  'h-10 min-w-0 flex-1 rounded-md border text-xs font-medium transition-colors cursor-pointer md:h-8',
                   days.includes(d) ? 'border-accent/50 bg-accent/15 text-fg' : 'border-line bg-panel-2 text-muted hover:text-fg',
                 )}
               >
@@ -182,7 +182,7 @@ function RoutineForm({ initial, onDone }: { initial: Partial<Routine>; onDone: (
         <Field label="Duration"><DurationSelect value={duration} onChange={setDuration} /></Field>
       </div>
       <Field label="Color" group>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-3 md:gap-2">
           {Object.entries(COLORS).map(([name, hex]) => (
             <button
               type="button"
@@ -190,14 +190,14 @@ function RoutineForm({ initial, onDone }: { initial: Partial<Routine>; onDone: (
               aria-label={name}
               aria-pressed={color === name}
               onClick={() => setColor(name)}
-              className={cn('size-6 rounded-full transition-transform cursor-pointer', color === name ? 'ring-2 ring-offset-2 ring-offset-[var(--panel)] scale-110' : 'hover:scale-110')}
+              className={cn('size-8 rounded-full transition-transform cursor-pointer md:size-6', color === name ? 'ring-2 ring-offset-2 ring-offset-[var(--panel)] scale-110' : 'hover:scale-110')}
               style={{ background: hex, ['--tw-ring-color' as string]: hex }}
             />
           ))}
         </div>
       </Field>
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <div className="flex gap-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <div className="flex flex-wrap gap-1">
           {initial.id && (
             <Button
               type="button"

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Check as CheckIcon } from 'lucide-react'
 import { del } from 'idb-keyval'
 import { toast } from 'sonner'
 import { Button } from '@/components/primitives'
@@ -7,17 +8,17 @@ import { DEFAULT_SETTINGS, useMutations, useSettings } from '@/lib/data'
 import { disablePush, enablePush, getPushState, testNotification, type PushState } from '@/lib/push'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
-import { useTheme } from '@/lib/theme'
+import { THEMES, useTheme, type ThemeChoice } from '@/lib/theme'
 import { cn } from '@/lib/ui'
 
-const selectCls = 'h-8 rounded-md border border-line bg-panel-2 px-2 text-[13px] outline-none focus:border-accent/60'
+const selectCls = 'h-9 rounded-md border border-line bg-panel-2 px-2 text-base outline-none focus:border-accent/60 md:h-8 md:text-[13px]'
 
 export default function SettingsPage() {
   const { session } = useAuth()
   const { data } = useSettings()
   const settings = data ?? DEFAULT_SETTINGS
   const { saveSettings } = useMutations()
-  const { theme, setTheme } = useTheme()
+  const { choice, setTheme } = useTheme()
   const [push, setPush] = useState<PushState | 'loading'>('loading')
   const zones = useMemo(() => Intl.supportedValuesOf('timeZone'), [])
   const deviceTz = DEFAULT_SETTINGS.timezone
@@ -81,17 +82,16 @@ export default function SettingsPage() {
         </Row>
       </Section>
 
-      <Section title="Appearance">
-        <Row label="Theme">
-          <div className="flex rounded-md border border-line bg-panel-2 p-0.5">
-            {(['dark', 'light'] as const).map((t) => (
-              <button key={t} onClick={() => setTheme(t)} className={cn('h-7 rounded px-3 text-xs capitalize cursor-pointer', theme === t ? 'bg-panel text-fg shadow-sm' : 'text-muted')}>
-                {t}
-              </button>
-            ))}
-          </div>
-        </Row>
-      </Section>
+      <section className="mt-8">
+        <h2 className="mb-2 text-xs font-medium text-muted">Theme</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Theme">
+          {THEMES.map((t) => (
+            <ThemeCard key={t.id} id={t.id} name={t.name} note={t.note} selected={choice === t.id} onSelect={() => setTheme(t.id)} />
+          ))}
+          <ThemeCard id="system" name="System" note="Light by day, Midnight at night" selected={choice === 'system'} onSelect={() => setTheme('system')} />
+        </div>
+        <p className="mt-2 text-xs text-faint">Saved on this device. Every theme is checked for WCAG AA contrast.</p>
+      </section>
 
       <Section title="Account">
         <Row label={session?.user.email ?? ''}>
@@ -113,12 +113,50 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3">
-      <div className="min-w-0">
-        <div className="truncate text-[13px]">{label}</div>
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+      <div className="min-w-0 flex-1 basis-40">
+        <div className="truncate text-sm md:text-[13px]">{label}</div>
         {hint && <div className="mt-0.5 text-xs text-faint">{hint}</div>}
       </div>
       {children}
     </div>
+  )
+}
+
+/** Mini preview rendered in the theme's own tokens (data-theme scopes the CSS variables). */
+function ThemeCard({ id, name, note, selected, onSelect }: { id: ThemeChoice; name: string; note: string; selected: boolean; onSelect: () => void }) {
+  const preview = (theme: string, className = '') => (
+    <div data-theme={theme} className={cn('flex h-full flex-col gap-1.5 p-2.5', className)} style={{ background: 'var(--bg)' }}>
+      <div className="flex items-center gap-1.5 rounded-md p-1.5" style={{ background: 'var(--panel)', border: '1px solid var(--border)' }}>
+        <span className="size-2.5 rounded-full" style={{ background: 'var(--accent)' }} />
+        <span className="h-1.5 w-10 rounded-full" style={{ background: 'var(--fg)' }} />
+      </div>
+      <span className="h-1.5 w-14 rounded-full" style={{ background: 'var(--muted)' }} />
+      <span className="h-1.5 w-8 rounded-full" style={{ background: 'var(--faint)' }} />
+    </div>
+  )
+  return (
+    <button
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        'group overflow-hidden rounded-xl border text-left transition-colors cursor-pointer',
+        selected ? 'border-accent ring-2 ring-[var(--ring)]' : 'border-line hover:border-line-strong',
+      )}
+    >
+      <div className="h-[72px] overflow-hidden border-b border-line">
+        {id === 'system'
+          ? <div className="grid h-full grid-cols-2">{preview('light')}{preview('midnight')}</div>
+          : preview(id)}
+      </div>
+      <div className="flex items-start justify-between gap-2 bg-panel px-3 py-2">
+        <div className="min-w-0">
+          <div className="text-sm font-medium md:text-[13px]">{name}</div>
+          <div className="truncate text-xs text-muted">{note}</div>
+        </div>
+        {selected && <CheckIcon size={15} className="mt-0.5 shrink-0 text-accent" />}
+      </div>
+    </button>
   )
 }

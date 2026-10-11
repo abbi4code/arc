@@ -28,25 +28,25 @@ export default function RoutinesPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6">
-      <header className="mb-6 flex items-end justify-between">
-        <div>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0 flex-1 basis-56">
           <h1 className="text-2xl font-semibold tracking-tight">Routines</h1>
-          <p className="mt-1 text-[13px] text-muted">Repeat on chosen days and show up automatically on Today.</p>
+          <p className="mt-1 text-sm text-muted md:text-[13px]">Repeat on chosen days and show up automatically on Today.</p>
         </div>
         <Button variant="primary" onClick={() => editRoutine({ starts_on: today })}><Plus size={14} /> New routine</Button>
       </header>
 
       {!isLoading && active.length === 0 && (
-        <div className="rounded-xl border border-dashed border-line p-10 text-center">
+        <div className="rounded-xl border border-dashed border-line px-5 py-8 text-center sm:p-10">
           <p className="text-sm font-medium">No routines yet</p>
           <p className="mt-1 text-[13px] text-muted">Start with something small: “Gym 07:00”, “Read 20m”, “DSA 1h”.</p>
           <Button className="mt-4" variant="subtle" onClick={() => editRoutine({ starts_on: today })}><Plus size={14} /> Create your first routine</Button>
         </div>
       )}
 
-      <div className="grid gap-px overflow-hidden rounded-xl border border-line bg-line">
+      {active.length > 0 && <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-line bg-line">
         {active.map((r) => <RoutineRow key={r.id} r={r} done={doneByRoutine.get(r.id)} today={today} onOpen={() => editRoutine(r)} />)}
-      </div>
+      </div>}
 
       {archived.length > 0 && (
         <div className="mt-8">
@@ -54,7 +54,7 @@ export default function RoutinesPage() {
             <ChevronRight size={14} className={cn('transition-transform', showArchived && 'rotate-90')} /> Archived · {archived.length}
           </button>
           {showArchived && (
-            <div className="grid gap-px overflow-hidden rounded-xl border border-line bg-line opacity-70">
+            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-line bg-line opacity-70">
               {archived.map((r) => <RoutineRow key={r.id} r={r} done={doneByRoutine.get(r.id)} today={today} onOpen={() => editRoutine(r)} />)}
             </div>
           )}
@@ -70,7 +70,7 @@ function RoutineRow({ r, done, today, onOpen }: { r: Routine; done?: Set<string>
     <button onClick={onOpen} className="flex items-center gap-3 bg-panel px-4 py-3 text-left transition-colors hover:bg-panel-2 cursor-pointer">
       <span className="size-2.5 shrink-0 rounded-full" style={{ background: colorOf(r.color) }} />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-medium">{r.title}</div>
+        <div className="truncate text-sm font-medium md:text-[13px]">{r.title}</div>
         <div className="truncate text-xs text-muted">
           {describeDays(r.days_of_week)}
           {r.start_time && <span className="tabular font-mono"> · {r.start_time.slice(0, 5)}{r.duration_min ? `–${formatHM(minutesOf(r.start_time) + r.duration_min)}` : ''}</span>}

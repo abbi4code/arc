@@ -67,7 +67,7 @@ export default function TodayPage() {
     })),
     ...dayTasks.filter((t) => t.start_time).map((t) => ({
       key: `t:${t.id}`, kind: 'task' as const, title: t.title, start: minutesOf(t.start_time!), duration: t.duration_min,
-      color: 'slate', done: !!t.done_at, task: t,
+      color: 'accent', done: !!t.done_at, task: t,
     })),
   ]
 
@@ -111,7 +111,7 @@ export default function TodayPage() {
             {rel && <span className="rounded bg-accent/15 px-1.5 py-0.5 font-medium text-accent">{rel}</span>}
             <span>{fmt(date, { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           </div>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{fmt(date, { weekday: 'long' })}</h1>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{fmt(date, { weekday: 'long' })}</h1>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2" aria-label={`${progress.done} of ${progress.total} done`}>
@@ -128,7 +128,7 @@ export default function TodayPage() {
         </div>
       </header>
 
-      <div className="grid md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+      <div className="grid grid-cols-1 md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <section className="scrollbar-thin border-line px-4 py-4 md:min-h-0 md:overflow-y-auto md:border-r md:px-6">
           <QuickAdd inputRef={quickAddRef} date={date} onAdd={saveTask} />
 
@@ -147,7 +147,7 @@ export default function TodayPage() {
                     onToggle={() => toggle(item)} onOpen={() => open(item)}
                     meta={fmt(task.date, { month: 'short', day: 'numeric' })}
                     trailing={
-                      <button onClick={(e) => { e.stopPropagation(); moveToToday(task) }} className="flex items-center gap-1 text-xs text-muted opacity-0 group-hover:opacity-100 hover:text-fg cursor-pointer" aria-label="Move to today">
+                      <button onClick={(e) => { e.stopPropagation(); moveToToday(task) }} className="flex shrink-0 items-center gap-1 text-xs text-muted hover:text-fg cursor-pointer md:opacity-0 md:group-hover:opacity-100" aria-label="Move to today">
                         Today <ArrowRight size={12} />
                       </button>
                     }
@@ -220,7 +220,7 @@ function QuickAdd({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) =>
 
   return (
     <form onSubmit={submit} className="mb-6">
-      <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-panel px-3 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-[var(--ring)]">
+      <div className="flex h-11 items-center gap-2 rounded-lg border border-line bg-panel px-3 md:h-10 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-[var(--ring)]">
         <span className="text-faint">+</span>
         <input
           ref={inputRef}
@@ -228,7 +228,7 @@ function QuickAdd({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) =>
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === 'Escape' && (e.currentTarget.blur(), setValue(''))}
           placeholder="Add a task…  e.g. Deep work 10:00 2h"
-          className="h-full min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-faint"
+          className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-faint md:text-[13px]"
           aria-label="Quick add task"
         />
         {chips.map((c) => (
@@ -249,7 +249,7 @@ function Group({ title, count, empty, action, children }: { title: string; count
         </h2>
         {action}
       </div>
-      {count === 0 && empty ? <p className="py-2 text-[13px] text-faint">{empty}</p> : <div className="grid">{children}</div>}
+      {count === 0 && empty ? <p className="py-2 text-[13px] text-faint">{empty}</p> : <div className="grid grid-cols-1">{children}</div>}
     </div>
   )
 }
@@ -271,13 +271,13 @@ function Row({ item, onToggle, onOpen, meta, trailing, focused, rowRef }: {
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === ' ') { e.preventDefault(); onToggle() } }}
       className={cn(
-        'group -mx-2 flex h-9 items-center gap-3 rounded-md px-2 outline-none transition-colors cursor-pointer hover:bg-panel-2',
+        'group -mx-2 flex h-11 items-center gap-3 rounded-md px-2 outline-none transition-colors cursor-pointer hover:bg-panel-2 md:h-9',
         focused && 'bg-panel-2 ring-1 ring-line-strong',
       )}
     >
       <Check checked={item.done} onChange={onToggle} color={color} label={`Mark "${data.title}" ${item.done ? 'not done' : 'done'}`} />
       {color && <span className="size-1.5 shrink-0 rounded-full" style={{ background: color }} />}
-      <span className={cn('min-w-0 flex-1 truncate text-[13px]', item.done && 'text-faint line-through')}>{data.title}</span>
+      <span className={cn('min-w-0 flex-1 truncate text-sm md:text-[13px]', item.done && 'text-muted line-through')}>{data.title}</span>
       {trailing}
       {meta && <span className="shrink-0 text-xs text-danger/80">{meta}</span>}
       {time && <span className="tabular shrink-0 font-mono text-[11px] text-faint">{time}</span>}

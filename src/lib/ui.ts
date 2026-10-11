@@ -12,7 +12,7 @@ export const COLORS: Record<string, string> = {
   cyan: '#3bb5c9',
   slate: '#8a8f98',
 }
-export const colorOf = (c: string | null | undefined) => COLORS[c ?? 'slate'] ?? COLORS.slate
+export const colorOf = (c: string | null | undefined) => (c === 'accent' ? 'var(--accent)' : (COLORS[c ?? 'slate'] ?? COLORS.slate))
 
 export const WEEKDAY_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 export const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

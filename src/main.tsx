@@ -13,8 +13,8 @@ import './index.css'
 registerSW({ immediate: true })
 
 function ThemedToaster() {
-  const { theme } = useTheme()
-  return <Toaster theme={theme} position="bottom-right" toastOptions={{ className: '!bg-panel !border-line !text-fg' }} />
+  const { isDark } = useTheme()
+  return <Toaster theme={isDark ? 'dark' : 'light'} position="bottom-right" toastOptions={{ className: '!bg-panel !border-line !text-fg' }} />
 }
 
 createRoot(document.getElementById('root')!).render(

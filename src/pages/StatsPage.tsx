@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useLogs, useRoutines, useSettings, useTasks } from '@/lib/data'
 import { addDaysISO, todayISO, weekdayOf } from '@/lib/domain/dates'
 import { isRoutineDue } from '@/lib/domain/routines'
@@ -16,6 +16,9 @@ export default function StatsPage() {
   const { data: settings } = useSettings()
   const weekStart = settings?.week_start ?? 1
   const today = todayISO()
+  const heatmapRef = useRef<HTMLDivElement>(null)
+  // Most recent weeks first on narrow screens
+  useLayoutEffect(() => { heatmapRef.current?.scrollTo({ left: heatmapRef.current.scrollWidth }) }, [])
 
   const tasksByDate = useMemo(() => {
     const m = new Map<string, Task[]>()
@@ -88,7 +91,7 @@ export default function StatsPage() {
 
       <section className="mt-6 rounded-xl border border-line bg-panel p-4">
         <h2 className="mb-3 text-xs font-medium text-muted">Last 12 months</h2>
-        <div className="scrollbar-thin overflow-x-auto pb-1">
+        <div ref={heatmapRef} className="scrollbar-thin overflow-x-auto pb-1">
           <div className="flex w-max gap-[3px]" role="img" aria-label="Daily completion heatmap">
             {weeks.map((week) => (
               <div key={week[0]} className="grid gap-[3px]">
@@ -125,12 +128,12 @@ export default function StatsPage() {
       </section>
 
       <section className="mt-6 overflow-hidden rounded-xl border border-line bg-panel">
-        <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,4.5rem)] gap-2 border-b border-line px-4 py-2 text-[11px] font-medium text-muted">
+        <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,3.25rem)] gap-2 border-b sm:grid-cols-[minmax(0,1fr)_repeat(3,4.5rem)] border-line px-4 py-2 text-[11px] font-medium text-muted">
           <span>Routine</span><span className="text-right">Streak</span><span className="text-right">Best</span><span className="text-right">30d</span>
         </div>
         {perRoutine.length === 0 && <p className="px-4 py-6 text-center text-[13px] text-faint">Add routines to see streaks.</p>}
         {perRoutine.map(({ r, current, best, rate30 }) => (
-          <div key={r.id} className="grid grid-cols-[minmax(0,1fr)_repeat(3,4.5rem)] items-center gap-2 border-b border-line px-4 py-2.5 last:border-0">
+          <div key={r.id} className="grid grid-cols-[minmax(0,1fr)_repeat(3,3.25rem)] items-center sm:grid-cols-[minmax(0,1fr)_repeat(3,4.5rem)] gap-2 border-b border-line px-4 py-2.5 last:border-0">
             <div className="flex min-w-0 items-center gap-2">
               <span className="size-2 shrink-0 rounded-full" style={{ background: colorOf(r.color) }} />
               <span className="truncate text-[13px]">{r.title}</span>

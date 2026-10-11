@@ -2,33 +2,82 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-  --bg: #fbfbfc;
-  --panel: #ffffff;
-  --panel-2: #f4f4f6;
-  --border: rgb(0 0 0 / 0.08);
-  --border-strong: rgb(0 0 0 / 0.14);
-  --fg: #16161a;
-  --muted: #6b6f7a;
-  --faint: #a0a3ab;
-  --accent: #5e6ad2;
-  --accent-fg: #ffffff;
-  --danger: #e5484d;
-  --ring: rgb(94 106 210 / 0.45);
-}
-.dark {
+/* Themes. Contrast is enforced by src/lib/themes.test.ts — keep hex values (6 digits) for text/surfaces. */
+:root,
+[data-theme="midnight"] {
   --bg: #0b0b0f;
-  --panel: #111116;
-  --panel-2: #17171d;
-  --border: rgb(255 255 255 / 0.07);
-  --border-strong: rgb(255 255 255 / 0.13);
-  --fg: #e8e8ed;
-  --muted: #8a8f98;
-  --faint: #5a5e66;
-  --accent: #7c85e8;
+  --panel: #121217;
+  --panel-2: #1a1a21;
+  --fg: #e6e6eb;
+  --muted: #a1a5ae;
+  --faint: #80848e;
+  --accent: #8b93f0;
   --accent-fg: #0b0b0f;
-  --danger: #ff6369;
-  --ring: rgb(124 133 232 / 0.5);
+  --danger: #ff6b70;
+  --border: rgb(255 255 255 / 0.08);
+  --border-strong: rgb(255 255 255 / 0.15);
+  --ring: rgb(139 147 240 / 0.45);
+  color-scheme: dark;
+}
+[data-theme="dusk"] {
+  --bg: #262b35;
+  --panel: #2e3440;
+  --panel-2: #363d4b;
+  --fg: #eceff4;
+  --muted: #c3cad6;
+  --faint: #a5aebd;
+  --accent: #8fc6d6;
+  --accent-fg: #1f242c;
+  --danger: #f0959b;
+  --border: rgb(236 239 244 / 0.09);
+  --border-strong: rgb(236 239 244 / 0.17);
+  --ring: rgb(143 198 214 / 0.45);
+  color-scheme: dark;
+}
+[data-theme="forest"] {
+  --bg: #141a17;
+  --panel: #1a211d;
+  --panel-2: #212a25;
+  --fg: #e2eae4;
+  --muted: #a9b7ae;
+  --faint: #88978d;
+  --accent: #7fd1a0;
+  --accent-fg: #0f1411;
+  --danger: #f08a80;
+  --border: rgb(226 234 228 / 0.08);
+  --border-strong: rgb(226 234 228 / 0.16);
+  --ring: rgb(127 209 160 / 0.4);
+  color-scheme: dark;
+}
+[data-theme="sepia"] {
+  --bg: #f3ead6;
+  --panel: #f9f3e4;
+  --panel-2: #ebe0c8;
+  --fg: #3a2f22;
+  --muted: #5f513e;
+  --faint: #6f604b;
+  --accent: #9a4a22;
+  --accent-fg: #fbf6ea;
+  --danger: #a8322d;
+  --border: rgb(58 47 34 / 0.12);
+  --border-strong: rgb(58 47 34 / 0.22);
+  --ring: rgb(154 74 34 / 0.35);
+  color-scheme: light;
+}
+[data-theme="light"] {
+  --bg: #f6f6f8;
+  --panel: #ffffff;
+  --panel-2: #eeeef2;
+  --fg: #1c1c22;
+  --muted: #575b66;
+  --faint: #63676f;
+  --accent: #4752c4;
+  --accent-fg: #ffffff;
+  --danger: #c92a2f;
+  --border: rgb(0 0 0 / 0.09);
+  --border-strong: rgb(0 0 0 / 0.16);
+  --ring: rgb(71 82 196 / 0.35);
+  color-scheme: light;
 }
 
 @theme inline {
@@ -47,20 +96,20 @@
   --color-danger: var(--danger);
 }
 
-html, body, #root { height: 100%; }
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
+/* Base styles must sit in a layer, or they override Tailwind utilities (e.g. button text colors). */
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::selection { background: var(--ring); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  input, textarea, select, button { font: inherit; color: inherit; }
+  .tabular { font-variant-numeric: tabular-nums; }
+  .scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
 }
-::selection { background: var(--ring); }
-:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
-input, textarea, select, button { font: inherit; color: inherit; }
-.tabular { font-variant-numeric: tabular-nums; }
-.scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
-input[type="time"]::-webkit-calendar-picker-indicator { filter: var(--picker-filter, none); }
-.dark input[type="time"]::-webkit-calendar-picker-indicator,
-.dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); }

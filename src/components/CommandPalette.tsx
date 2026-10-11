@@ -1,19 +1,19 @@
 import { Command } from 'cmdk'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, CalendarDays, CalendarPlus, CheckCircle2, Circle, Moon, Plus, Repeat, Settings, Sun } from 'lucide-react'
+import { BarChart3, CalendarDays, CalendarPlus, CheckCircle2, Circle, Palette, Plus, Repeat, Settings } from 'lucide-react'
 import { useEditor } from './Editor'
 import { useLogs, useMutations, useRoutines, useTasks } from '@/lib/data'
 import { addDaysISO, todayISO } from '@/lib/domain/dates'
 import { routinesDueOn } from '@/lib/domain/routines'
 import { logKey } from '@/lib/domain/stats'
-import { useTheme } from '@/lib/theme'
+import { THEMES, useTheme } from '@/lib/theme'
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { editTask, editRoutine } = useEditor()
-  const { toggle: toggleTheme, theme } = useTheme()
+  const { choice, setTheme } = useTheme()
   const { data: routines = [] } = useRoutines()
   const { data: tasks = [] } = useTasks()
   const { keys } = useLogs()
@@ -42,7 +42,7 @@ export function CommandPalette() {
       overlayClassName="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
       contentClassName="fixed left-1/2 top-[14vh] z-50 w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-line bg-panel shadow-2xl"
     >
-      <Command.Input placeholder="Type a command or search today…" className="h-12 w-full border-b border-line bg-transparent px-4 text-sm outline-none placeholder:text-faint" />
+      <Command.Input placeholder="Type a command or search today…" className="h-12 w-full border-b border-line bg-transparent px-4 text-base outline-none placeholder:text-faint md:text-sm" />
       <Command.List className="scrollbar-thin max-h-[50vh] overflow-y-auto p-2">
         <Command.Empty className="py-6 text-center text-[13px] text-faint">No results.</Command.Empty>
         <Command.Group heading="Create" className="text-[11px] text-faint [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5">
@@ -71,7 +71,13 @@ export function CommandPalette() {
           <Command.Item className={item} onSelect={run(() => navigate('/routines'))}><Repeat size={15} /> Routines</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate('/stats'))}><BarChart3 size={15} /> Stats</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate('/settings'))}><Settings size={15} /> Settings</Command.Item>
-          <Command.Item className={item} onSelect={run(toggleTheme)}>{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />} Toggle theme</Command.Item>
+        </Command.Group>
+        <Command.Group heading="Theme" className="text-[11px] text-faint [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5">
+          {[...THEMES.map((t) => ({ id: t.id, name: t.name })), { id: 'system' as const, name: 'System' }].map((t) => (
+            <Command.Item key={t.id} value={`theme ${t.name}`} className={item} onSelect={run(() => setTheme(t.id))}>
+              <Palette size={15} /> {t.name} {choice === t.id && <span className="ml-auto text-xs text-accent">Current</span>}
+            </Command.Item>
+          ))}
         </Command.Group>
       </Command.List>
     </Command.Dialog>

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class="dark" data-theme="midnight">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -12,9 +12,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <title>Winter Arc</title>
     <script>
+      // Apply the saved theme before first paint (mirrors src/lib/theme.ts).
       try {
-        var t = localStorage.getItem('theme');
-        if (t === 'light') document.documentElement.classList.remove('dark');
+        var c = localStorage.getItem('theme') || 'midnight'
+        if (c === 'dark') c = 'midnight'
+        var id = c === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'midnight' : 'light') : c
+        var bg = { midnight: '#0b0b0f', dusk: '#262b35', forest: '#141a17', sepia: '#f3ead6', light: '#f6f6f8' }
+        if (bg[id]) {
+          document.documentElement.dataset.theme = id
+          document.documentElement.classList.toggle('dark', ['midnight', 'dusk', 'forest'].indexOf(id) >= 0)
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', bg[id])
+        }
       } catch (e) {}
     </script>
   </head>

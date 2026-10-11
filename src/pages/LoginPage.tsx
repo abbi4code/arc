@@ -30,7 +30,7 @@ export default function LoginPage() {
             <Button variant="ghost" size="sm" className="mt-4 -ml-2" onClick={() => setState('idle')}>Use a different email</Button>
           </div>
         ) : (
-          <form onSubmit={submit} className="grid gap-3">
+          <form onSubmit={submit} className="grid grid-cols-1 gap-3">
             <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
             <p className="-mt-1 mb-2 text-[13px] text-muted">Plan the day. Keep the streak.</p>
             <Input type="email" autoFocus required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />

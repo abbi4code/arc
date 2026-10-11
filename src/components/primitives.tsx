@@ -12,10 +12,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer',
+        'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer',
         size === 'sm' && 'h-7 px-2 text-xs',
-        size === 'md' && 'h-8 px-3 text-[13px]',
-        size === 'icon' && 'h-8 w-8',
+        size === 'md' && 'h-9 px-3 text-sm md:h-8 md:text-[13px]',
+        size === 'icon' && 'h-10 w-10 md:h-8 md:w-8',
         variant === 'primary' && 'bg-accent text-accent-fg hover:opacity-90',
         variant === 'subtle' && 'bg-panel-2 border border-line hover:border-line-strong text-fg',
         variant === 'ghost' && 'text-muted hover:text-fg hover:bg-panel-2',
@@ -32,7 +32,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     <input
       ref={ref}
       className={cn(
-        'h-9 w-full rounded-md border border-line bg-panel-2 px-3 text-[13px] placeholder:text-faint outline-none transition-colors focus:border-accent/60 focus:ring-2 focus:ring-[var(--ring)]',
+        'h-10 w-full min-w-0 rounded-md border border-line bg-panel-2 px-3 text-base placeholder:text-faint md:h-9 md:text-[13px] outline-none transition-colors focus:border-accent/60 focus:ring-2 focus:ring-[var(--ring)]',
         className,
       )}
       {...props}
@@ -50,8 +50,8 @@ export function Field({ label, children, hint, group }: { label: string; childre
     </>
   )
   return group
-    ? <div role="group" aria-label={label} className="grid gap-1.5">{content}</div>
-    : <label className="grid gap-1.5">{content}</label>
+    ? <div role="group" aria-label={label} className="grid min-w-0 grid-cols-1 gap-1.5">{content}</div>
+    : <label className="grid min-w-0 grid-cols-1 gap-1.5">{content}</label>
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
@@ -69,7 +69,7 @@ export function Sheet({ open, onOpenChange, title, children }: { open: boolean; 
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed z-50 inset-x-0 bottom-0 max-h-[90dvh] overflow-y-auto rounded-t-xl border border-line bg-panel p-5 shadow-2xl
+          className="fixed z-50 inset-x-0 bottom-0 max-h-[90dvh] overflow-y-auto rounded-t-xl border border-line bg-panel p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl
                      sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-[12vh] sm:w-[440px] sm:-translate-x-1/2 sm:rounded-xl"
         >
           <div className="mb-4 flex items-center justify-between">
@@ -94,7 +94,7 @@ export function Check({ checked, onChange, color, label }: { checked: boolean; o
       aria-label={label}
       onClick={(e) => { e.stopPropagation(); onChange() }}
       className={cn(
-        'grid size-[18px] shrink-0 place-items-center rounded-full border transition-all cursor-pointer',
+        'relative grid size-5 shrink-0 place-items-center rounded-full border transition-all cursor-pointer before:absolute before:-inset-2.5 md:size-[18px]',
         checked ? 'border-transparent' : 'border-line-strong hover:border-muted',
       )}
       style={checked ? { background: color ?? 'var(--accent)' } : undefined}
