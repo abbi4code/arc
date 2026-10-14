@@ -51,7 +51,7 @@ test('learning: track → goal → pasted topics → plan → done on Today', as
     await expect(page.getByText('0/5')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Open link for "Number of Islands"' }))
       .toHaveAttribute('href', 'https://leetcode.com/problems/number-of-islands/')
-    expect((await topic('Network Delay Time'))?.notes).toBe('https://leetcode.com/problems/network-delay-time/')
+    await expect.poll(async () => (await topic('Network Delay Time'))?.notes).toBe('https://leetcode.com/problems/network-delay-time/')
 
     // Plan a link topic → the Today task carries the link
     await page.getByRole('button', { name: 'Plan "Network Delay Time"', exact: true }).click()
@@ -73,18 +73,18 @@ test('learning: track → goal → pasted topics → plan → done on Today', as
     // Today: nudge strip + chip; completing the task completes the topic
     await page.getByRole('link', { name: 'Today' }).first().click()
     await expect(page.getByRole('heading', { name: /Learning deadlines/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Graphs · DSA/ })).toContainText('1/5')
+    await expect(page.getByRole('button', { name: /Graphs.*DSA/ })).toContainText('1/5')
     await expect(page.getByRole('link', { name: 'Open link for "Network Delay Time"' })).toBeVisible()
     await page.getByRole('checkbox', { name: 'Mark "Dijkstra" done' }).click()
     await expect.poll(async () => !!(await topic('Dijkstra'))?.done_at).toBe(true)
-    await expect(page.getByRole('button', { name: /Graphs · DSA/ })).toContainText('2/5')
+    await expect(page.getByRole('button', { name: /Graphs.*DSA/ })).toContainText('2/5')
 
     // …and un-checking reverts it
     await page.getByRole('checkbox', { name: 'Mark "Dijkstra" not done' }).click()
     await expect.poll(async () => !!(await topic('Dijkstra'))?.done_at).toBe(false)
 
     // Pause the track → it moves to Archived and the nudge disappears from Today
-    await page.getByRole('button', { name: /Graphs · DSA/ }).click()
+    await page.getByRole('button', { name: /Graphs.*DSA/ }).click()
     await page.getByRole('button', { name: 'Edit track' }).click()
     await page.getByRole('button', { name: 'Paused' }).click()
     await page.getByRole('button', { name: 'Save' }).click()

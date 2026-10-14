@@ -76,7 +76,7 @@ function TrackCard({ track }: { track: LearningTrack }) {
     <Link to={`/learning/${track.id}`} className="group grid gap-3 rounded-xl border border-line bg-panel p-4 transition-colors hover:border-line-strong">
       <div className="flex items-center gap-2">
         <span className="size-2.5 shrink-0 rounded-full" style={{ background: color }} />
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold">{track.title}</span>
+        <span className="min-w-0 flex-1 text-sm font-semibold leading-snug [overflow-wrap:anywhere]">{track.title}</span>
         {track.status !== 'active' && <span className="text-[11px] capitalize text-muted">{track.status}</span>}
         <ChevronRight size={15} className="text-faint transition-transform group-hover:translate-x-0.5" />
       </div>
@@ -84,10 +84,10 @@ function TrackCard({ track }: { track: LearningTrack }) {
         <ProgressBar value={total ? done / total : 0} color={color} className="flex-1" />
         <span className="tabular font-mono text-xs text-muted">{done}/{total}</span>
       </div>
-      <div className="flex min-h-5 items-center gap-2 text-xs text-muted">
+      <div className="flex min-h-5 items-start gap-2 text-xs text-muted">
         {next ? (
           <>
-            <span className="min-w-0 flex-1 truncate"><span className="text-fg">{next.g.title}</span> · {dueLabel(next.g.target_date, today)}</span>
+            <span className="min-w-0 flex-1 leading-snug [overflow-wrap:anywhere]"><span className="text-fg">{next.g.title}</span> · {dueLabel(next.g.target_date, today)}</span>
             <StatusBadge status={next.status} progress={next.progress} expected={next.expected} />
           </>
         ) : <span className="text-faint">No open goals</span>}

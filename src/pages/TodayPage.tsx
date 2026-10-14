@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, ArrowUp, CalendarRange, ChevronLeft, ChevronRight, CornerDownLeft, GraduationCap, ListChecks, Trash2 } from 'lucide-react'
+import { ArrowRight, ArrowUp, CalendarRange, ChevronDown, ChevronLeft, ChevronRight, CornerDownLeft, GraduationCap, ListChecks, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button, Check, Kbd } from '@/components/primitives'
 import { Timeline, type Block } from '@/components/Timeline'
 import { useEditor } from '@/components/Editor'
-import { useGoals, useLogs, useMutations, useRoutines, useTasks, useTopics, useTracks } from '@/lib/data'
+import { useGoals, useGroups, useLogs, useMutations, useRoutines, useTasks, useTopics, useTracks } from '@/lib/data'
+import { addSubtasks, groupForTag, subtaskProgress } from '@/lib/domain/tasks'
 import { dueSoonGoals } from '@/lib/domain/learning'
 import { OpenLink, StatusBadge, dueLabel } from '@/components/learning'
 import { firstUrl, linkSource } from '@/lib/domain/links'
@@ -13,8 +14,8 @@ import { addDaysISO, diffDaysISO, formatHM, minutesOf, todayISO } from '@/lib/do
 import { byScheduleOrder, routinesDueOn } from '@/lib/domain/routines'
 import { dayCompletion, logKey } from '@/lib/domain/stats'
 import { parseQuickAdd } from '@/lib/domain/quickAdd'
-import type { Routine, Task } from '@/lib/types'
-import { cn, colorOf, formatDuration, isTyping } from '@/lib/ui'
+import type { Routine, Task, TaskGroup } from '@/lib/types'
+import { COLORS, cn, colorOf, formatDuration, isTyping } from '@/lib/ui'
 import { useIsDesktop, useKeyboardOffset } from '@/lib/viewport'
 
 type Item =
@@ -46,7 +47,10 @@ export default function TodayPage() {
   const { data: goals = [] } = useGoals()
   const { data: topics = [] } = useTopics()
   const navigate = useNavigate()
-  const { editTask, editRoutine } = useEditor()
+  const { editTask, editRoutine, editGroup } = useEditor()
+  const { data: groupsData } = useGroups()
+  const groups = useMemo(() => [...(groupsData ?? [])].sort((a, b) => a.sort_order - b.sort_order), [groupsData])
+  const { toggleSubtask } = useMutations()
 
   const due = useMemo(() => routinesDueOn(routines, date), [routines, date])
   const dayTasks = useMemo(() => tasks.filter((t) => t.date === date).sort(byScheduleOrder), [tasks, date])
@@ -67,10 +71,36 @@ export default function TodayPage() {
     }))
   }, [topics, goals, tracks])
 
+  // Tasks under their group (in group order), then ungrouped tasks. Empty groups are hidden.
+  const sections = useMemo(() => {
+    const byGroup = new Map<string, Task[]>()
+    const loose: Task[] = []
+    const known = new Set(groups.map((g) => g.id))
+    dayTasks.forEach((t) => (t.group_id && known.has(t.group_id) ? (byGroup.get(t.group_id) ?? byGroup.set(t.group_id, []).get(t.group_id)!).push(t) : loose.push(t)))
+    return [
+      ...groups.filter((g) => byGroup.has(g.id)).map((g) => ({ key: g.id, group: g as TaskGroup | null, tasks: byGroup.get(g.id)! })),
+      ...(loose.length ? [{ key: 'none', group: null as TaskGroup | null, tasks: loose }] : []),
+    ]
+  }, [dayTasks, groups])
+  const groupById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups])
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('collapsedGroups') ?? '[]')) } catch { return new Set() }
+  })
+  const toggleCollapsed = (key: string) => setCollapsed((prev) => {
+    const next = new Set(prev)
+    if (!next.delete(key)) next.add(key)
+    try { localStorage.setItem('collapsedGroups', JSON.stringify([...next])) } catch { /* storage blocked */ }
+    return next
+  })
+  // Checklists: open by default while the task is open; remember explicit toggles for this session
+  const [checklistOverride, setChecklistOverride] = useState<Record<string, boolean>>({})
+  const checklistOpen = (t: Task) => checklistOverride[t.id] ?? !t.done_at
+
   const items: Item[] = [
     ...overdue.map((task) => ({ kind: 'task' as const, task, done: false, overdue: true })),
     ...due.map((routine) => ({ kind: 'routine' as const, routine, done: logKeys.has(logKey(routine.id, date)) })),
-    ...dayTasks.map((task) => ({ kind: 'task' as const, task, done: !!task.done_at })),
+    ...sections.filter((sec) => !collapsed.has(sec.key)).flatMap((sec) => sec.tasks.map((task) => ({ kind: 'task' as const, task, done: !!task.done_at }))),
   ]
 
   const toggle = (i: Item) =>
@@ -181,7 +211,7 @@ export default function TodayPage() {
           'scrollbar-thin min-h-0 overflow-y-auto border-line px-4 pb-32 pt-4 md:border-r md:px-6 md:pb-4',
           view === 'timeline' && 'hidden md:block',
         )}>
-          {isDesktop && <QuickAdd inputRef={quickAddRef} date={date} onAdd={saveTask} />}
+          {isDesktop && <QuickAdd inputRef={quickAddRef} date={date} onAdd={saveTask} groups={groups} />}
 
           {nothingPlanned && (
             <div className="grid place-items-center px-6 py-16 text-center">
@@ -207,8 +237,11 @@ export default function TodayPage() {
                     rowRef={(el) => (rowRefs.current[itemKey(item)] = el)}
                     onToggle={() => toggle(item)} onOpen={() => open(item)} onDelete={() => removeTask(task)}
                     meta={fmt(task.date, { month: 'short', day: 'numeric' })}
+                    group={task.group_id ? groupById.get(task.group_id) : undefined}
+                    checklistOpen={checklistOpen(task)} onChecklistToggle={() => setChecklistOverride((o) => ({ ...o, [task.id]: !checklistOpen(task) }))}
+                    onSubtaskToggle={(id) => toggleSubtask(task, id)} onAddSubtasks={(text) => saveTask(addSubtasks(task, text))}
                     trailing={
-                      <button onClick={(e) => { e.stopPropagation(); moveToToday(task) }} className="flex shrink-0 items-center gap-1 text-xs text-muted hover:text-fg cursor-pointer md:opacity-0 md:group-hover:opacity-100" aria-label="Move to today">
+                      <button onClick={(e) => { e.stopPropagation(); moveToToday(task) }} className="flex items-center gap-0.5 rounded bg-accent/10 px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent/20 cursor-pointer" aria-label="Move to today">
                         Today <ArrowRight size={12} />
                       </button>
                     }
@@ -224,14 +257,17 @@ export default function TodayPage() {
                 <button
                   key={goal.id}
                   onClick={() => navigate(`/learning/${track.id}`)}
-                  className="-mx-2 flex min-h-11 items-center gap-3 rounded-md px-2 text-left transition-colors cursor-pointer hover:bg-panel-2 md:min-h-9"
+                  className="-mx-2 flex items-start gap-3 rounded-md px-2 py-2.5 text-left transition-colors cursor-pointer hover:bg-panel-2 md:py-1.5"
                 >
-                  <GraduationCap size={16} className="shrink-0" style={{ color: colorOf(track.color) }} />
-                  <span className="min-w-0 flex-1 truncate text-sm md:text-[13px]">
-                    {goal.title} <span className="text-muted">· {track.title}</span>
+                  <GraduationCap size={16} className="mt-0.5 shrink-0" style={{ color: colorOf(track.color) }} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm leading-snug [overflow-wrap:anywhere] md:text-[13px]">{goal.title}</span>
+                    <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
+                      <span>{track.title}</span><span>·</span>
+                      <span>{dueLabel(goal.target_date, today).replace(/^by [^·]+· /, '')}</span><span>·</span>
+                      <span className="tabular font-mono">{counts.done}/{counts.total}</span>
+                    </span>
                   </span>
-                  <span className="hidden shrink-0 text-xs text-muted sm:inline">{dueLabel(goal.target_date, today).replace(/^by [^·]+· /, '')}</span>
-                  <span className="tabular shrink-0 font-mono text-[11px] text-muted">{counts.done}/{counts.total}</span>
                   <StatusBadge status={status} progress={progress} expected={expected} />
                 </button>
               ))}
@@ -248,16 +284,43 @@ export default function TodayPage() {
             })}
           </Group>}
 
-          {dayTasks.length > 0 && <Group title="Tasks" count={dayTasks.length}>
-            {dayTasks.map((task) => {
-              const item: Item = { kind: 'task', task, done: !!task.done_at }
-              return (
-                <Row key={task.id} item={item} focused={items[cursor] && itemKey(items[cursor]) === itemKey(item)}
-                  rowRef={(el) => (rowRefs.current[itemKey(item)] = el)} onToggle={() => toggle(item)} onOpen={() => open(item)}
-                  chip={task.topic_id ? topicLabel.get(task.topic_id) : undefined} onDelete={() => removeTask(task)} />
-              )
-            })}
-          </Group>}
+          {sections.map(({ key, group, tasks: list }) => {
+            const isCollapsed = collapsed.has(key)
+            const doneCount = list.filter((t) => t.done_at).length
+            return (
+              <section key={key} className="mb-6" aria-label={group ? `${group.title} group` : 'Tasks'}>
+                <div className="mb-1 flex h-8 items-center gap-1">
+                  <button
+                    onClick={() => toggleCollapsed(key)}
+                    aria-expanded={!isCollapsed}
+                    className="-ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded px-1 py-1 text-left text-xs font-medium text-muted hover:text-fg cursor-pointer"
+                  >
+                    <ChevronDown size={14} className={cn('shrink-0 transition-transform', isCollapsed && '-rotate-90')} />
+                    {group && <span className="size-2 shrink-0 rounded-full" style={{ background: colorOf(group.color) }} />}
+                    <span className="truncate">{group ? group.title : 'Tasks'}</span>
+                    <span className="tabular ml-1 font-mono text-faint">{group ? `${doneCount}/${list.length}` : list.length}</span>
+                  </button>
+                  {group && (
+                    <Button variant="ghost" size="icon" aria-label={`Edit group ${group.title}`} onClick={() => editGroup(group)}><MoreHorizontal size={15} /></Button>
+                  )}
+                </div>
+                {!isCollapsed && (
+                  <div className="grid grid-cols-1">
+                    {list.map((task) => {
+                      const item: Item = { kind: 'task', task, done: !!task.done_at }
+                      return (
+                        <Row key={task.id} item={item} focused={items[cursor] && itemKey(items[cursor]) === itemKey(item)}
+                          rowRef={(el) => (rowRefs.current[itemKey(item)] = el)} onToggle={() => toggle(item)} onOpen={() => open(item)}
+                          chip={task.topic_id ? topicLabel.get(task.topic_id) : undefined} onDelete={() => removeTask(task)}
+                          checklistOpen={checklistOpen(task)} onChecklistToggle={() => setChecklistOverride((o) => ({ ...o, [task.id]: !checklistOpen(task) }))}
+                          onSubtaskToggle={(id) => toggleSubtask(task, id)} onAddSubtasks={(text) => saveTask(addSubtasks(task, text))} />
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            )
+          })}
 
           <p className="mt-8 hidden gap-3 text-[11px] text-faint md:flex">
             <span><Kbd>n</Kbd> add</span><span><Kbd>j</Kbd><Kbd>k</Kbd> move</span><span><Kbd>x</Kbd> done</span>
@@ -278,17 +341,20 @@ export default function TodayPage() {
         </section>
       </div>
 
-      {!isDesktop && <Composer inputRef={quickAddRef} date={date} onAdd={saveTask} />}
+      {!isDesktop && <Composer inputRef={quickAddRef} date={date} onAdd={saveTask} groups={groups} />}
     </div>
   )
 }
 
 /** Shared quick-add parsing: "Deep work 10:00 2h tomorrow" → task fields + preview chips. */
-function useQuickAdd(date: string, onAdd: (t: Task) => void) {
+function useQuickAdd(date: string, onAdd: (t: Task) => void, groups: TaskGroup[]) {
+  const { saveGroup } = useMutations()
   const [value, setValue] = useState('')
   const parsed = parseQuickAdd(value)
   const target = addDaysISO(date, parsed.dayOffset)
+  const tag = parsed.group ? groupForTag(parsed.group, groups) : null
   const chips = [
+    tag ? ('existing' in tag ? `#${tag.existing.title}` : `#${tag.create} (new)`) : null,
     parsed.dayOffset ? fmt(target, { weekday: 'short', month: 'short', day: 'numeric' }) : null,
     parsed.startTime,
     parsed.durationMin ? formatDuration(parsed.durationMin) : null,
@@ -297,9 +363,18 @@ function useQuickAdd(date: string, onAdd: (t: Task) => void) {
   const submit = (e?: FormEvent) => {
     e?.preventDefault()
     if (!parsed.title) return
+    let groupId: string | null = null
+    if (tag && 'existing' in tag) groupId = tag.existing.id
+    else if (tag) { // new group first: same offline queue, so it's created before the task that uses it
+      const palette = Object.keys(COLORS)
+      const g: TaskGroup = { id: crypto.randomUUID(), title: tag.create, color: palette[groups.length % palette.length], sort_order: Date.now() }
+      saveGroup(g)
+      groupId = g.id
+    }
     onAdd({
       id: crypto.randomUUID(), title: parsed.title, date: target, start_time: parsed.startTime,
       duration_min: parsed.durationMin ?? (parsed.startTime ? 30 : null), notes: parsed.url, done_at: null, sort_order: Date.now(),
+      group_id: groupId, subtasks: [],
     })
     setValue('')
   }
@@ -310,8 +385,8 @@ function useQuickAdd(date: string, onAdd: (t: Task) => void) {
  * Phone composer pinned above the tab bar (thumb reach). While focused, the tab bar hides and the
  * composer rides on top of the keyboard. Enter adds and keeps the keyboard open for the next task.
  */
-function Composer({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) => void; inputRef: React.RefObject<HTMLInputElement | null> }) {
-  const { value, setValue, chips, submit, canSubmit } = useQuickAdd(date, onAdd)
+function Composer({ date, onAdd, inputRef, groups }: { date: string; onAdd: (t: Task) => void; inputRef: React.RefObject<HTMLInputElement | null>; groups: TaskGroup[] }) {
+  const { value, setValue, chips, submit, canSubmit } = useQuickAdd(date, onAdd, groups)
   const [focused, setFocused] = useState(false)
   const keyboard = useKeyboardOffset(focused)
 
@@ -345,7 +420,7 @@ function Composer({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) =>
           onKeyDown={(e) => e.key === 'Escape' && (e.currentTarget.blur(), setValue(''))}
           enterKeyHint="send"
           autoComplete="off"
-          placeholder="Add a task…  e.g. Gym 7am 1h"
+          placeholder="Add a task…  e.g. #work Standup 10am"
           aria-label="Quick add task"
           className="h-11 min-w-0 flex-1 rounded-full border border-line bg-panel px-4 text-base outline-none placeholder:text-faint focus:border-accent/60"
         />
@@ -364,8 +439,8 @@ function Composer({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) =>
   )
 }
 
-function QuickAdd({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) => void; inputRef: React.RefObject<HTMLInputElement | null> }) {
-  const { value, setValue, chips, submit } = useQuickAdd(date, onAdd)
+function QuickAdd({ date, onAdd, inputRef, groups }: { date: string; onAdd: (t: Task) => void; inputRef: React.RefObject<HTMLInputElement | null>; groups: TaskGroup[] }) {
+  const { value, setValue, chips, submit } = useQuickAdd(date, onAdd, groups)
   return (
     <form onSubmit={submit} className="mb-6">
       <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-panel px-3 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-[var(--ring)]">
@@ -375,7 +450,7 @@ function QuickAdd({ date, onAdd, inputRef }: { date: string; onAdd: (t: Task) =>
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === 'Escape' && (e.currentTarget.blur(), setValue(''))}
-          placeholder="Add a task…  e.g. Deep work 10:00 2h"
+          placeholder="Add a task…  e.g. #work Deep work 10:00 2h"
           className="h-full min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-faint"
           aria-label="Quick add task"
         />
@@ -402,50 +477,110 @@ function Group({ title, count, empty, action, children }: { title: string; count
   )
 }
 
-function Row({ item, onToggle, onOpen, onDelete, meta, trailing, focused, rowRef, chip }: {
+function Row({ item, onToggle, onOpen, onDelete, meta, trailing, focused, rowRef, chip, group, checklistOpen, onChecklistToggle, onSubtaskToggle, onAddSubtasks }: {
   item: Item; onToggle: () => void; onOpen: () => void; onDelete?: () => void; meta?: string; trailing?: React.ReactNode; focused?: boolean; chip?: string
   rowRef: (el: HTMLDivElement | null) => void
+  group?: TaskGroup
+  checklistOpen?: boolean; onChecklistToggle?: () => void; onSubtaskToggle?: (id: string) => void; onAddSubtasks?: (text: string) => void
 }) {
   const data = item.kind === 'routine' ? item.routine : item.task
   const color = item.kind === 'routine' ? colorOf(item.routine.color) : undefined
   const time = data.start_time
     ? `${data.start_time.slice(0, 5)}${data.duration_min ? `–${formatHM(minutesOf(data.start_time) + data.duration_min)}` : ''}`
     : data.duration_min ? formatDuration(data.duration_min) : ''
+  const task = item.kind === 'task' ? item.task : null
+  const checklist = task ? subtaskProgress(task) : null
+  const url = task ? firstUrl(task.notes) : null
+  const hasMeta = !!(time || meta || trailing || chip || group || checklist || url)
+
   return (
     <div
       ref={rowRef}
       tabIndex={0}
       role="button"
       onClick={onOpen}
-      onKeyDown={(e) => { if (e.key === ' ') { e.preventDefault(); onToggle() } }}
+      onKeyDown={(e) => { if (e.key === ' ' && e.target === e.currentTarget) { e.preventDefault(); onToggle() } }}
       className={cn(
-        'group -mx-2 flex h-11 items-center gap-3 rounded-md px-2 outline-none transition-colors cursor-pointer hover:bg-panel-2 md:h-9',
+        'group -mx-2 flex items-start gap-3 rounded-md px-2 py-2.5 outline-none transition-colors cursor-pointer hover:bg-panel-2 md:py-1.5',
         focused && 'bg-panel-2 ring-1 ring-line-strong',
       )}
     >
-      <Check checked={item.done} onChange={onToggle} color={color} label={`Mark "${data.title}" ${item.done ? 'not done' : 'done'}`} />
-      {color && <span className="size-1.5 shrink-0 rounded-full" style={{ background: color }} />}
-      <span className={cn('min-w-0 flex-1 truncate text-sm md:text-[13px]', item.done && 'text-muted line-through')}>{data.title}</span>
-      {chip && (
-        <span className="flex min-w-0 max-w-[40%] shrink items-center gap-1 text-[11px] text-muted" title={chip}>
-          <GraduationCap size={12} className="shrink-0" /> <span className="truncate">{chip}</span>
-        </span>
-      )}
-      {item.kind === 'task' && firstUrl(item.task.notes) && <OpenLink url={firstUrl(item.task.notes)!} label={data.title} showSource={false} />}
-      {trailing}
-      {meta && <span className="shrink-0 text-xs text-danger/80">{meta}</span>}
-      {time && <span className="tabular shrink-0 font-mono text-[11px] text-faint">{time}</span>}
+      <span className="pt-px md:pt-0"><Check checked={item.done} onChange={onToggle} color={color} label={`Mark "${data.title}" ${item.done ? 'not done' : 'done'}`} /></span>
+      <div className="min-w-0 flex-1">
+        <div className={cn('text-sm leading-snug [overflow-wrap:anywhere] md:text-[13px]', item.done && 'text-muted line-through')}>
+          {color && <span className="mr-2 inline-block size-1.5 -translate-y-px rounded-full align-middle" style={{ background: color }} />}
+          {data.title}
+        </div>
+        {hasMeta && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
+            {time && <span className="tabular font-mono">{time}</span>}
+            {meta && <span className="text-danger">{meta}</span>}
+            {trailing}
+            {group && <span className="flex items-center gap-1"><span className="size-1.5 rounded-full" style={{ background: colorOf(group.color) }} />{group.title}</span>}
+            {chip && <span className="flex min-w-0 items-center gap-1"><GraduationCap size={12} className="shrink-0" /><span className="[overflow-wrap:anywhere]">{chip}</span></span>}
+            {checklist && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onChecklistToggle?.() }}
+                aria-expanded={checklistOpen}
+                aria-label={`Checklist ${checklist.done} of ${checklist.total}`}
+                className="flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-panel hover:text-fg cursor-pointer"
+              >
+                <ListChecks size={12} /> <span className="tabular font-mono">{checklist.done}/{checklist.total}</span>
+                <ChevronDown size={12} className={cn('transition-transform', !checklistOpen && '-rotate-90')} />
+              </button>
+            )}
+            {url && <OpenLink url={url} label={data.title} showSource={false} />}
+          </div>
+        )}
+        {task && checklist && checklistOpen && (
+          <Checklist task={task} onToggle={(id) => onSubtaskToggle?.(id)} onAdd={(text) => onAddSubtasks?.(text)} />
+        )}
+      </div>
       {onDelete && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onDelete() }}
           aria-label={`Delete "${data.title}"`}
-          className="-mr-1 grid size-9 shrink-0 place-items-center rounded-md text-faint transition-colors cursor-pointer hover:bg-danger/10 hover:text-danger
-                     md:size-7 md:opacity-0 md:group-hover:opacity-100 md:group-focus-visible:opacity-100 md:focus-visible:opacity-100"
+          className="-mr-1 -mt-1.5 grid size-9 shrink-0 place-items-center rounded-md text-faint transition-colors cursor-pointer hover:bg-danger/10 hover:text-danger
+                     md:-mt-0.5 md:size-7 md:opacity-0 md:group-hover:opacity-100 md:group-focus-visible:opacity-100 md:focus-visible:opacity-100"
         >
           <Trash2 size={15} />
         </button>
       )}
+    </div>
+  )
+}
+
+/** Inline checklist under a task: tick points, add more (paste a list to add many). */
+function Checklist({ task, onToggle, onAdd }: { task: Task; onToggle: (id: string) => void; onAdd: (text: string) => void }) {
+  const [value, setValue] = useState('')
+  // Flip the box on tap; the synced value takes over once the saved task re-renders.
+  const [pending, setPending] = useState<Record<string, boolean>>({})
+  useEffect(() => setPending({}), [task.subtasks])
+  const submit = (e: FormEvent) => { e.preventDefault(); if (value.trim()) { onAdd(value); setValue('') } }
+  return (
+    <div className="mt-2 grid gap-0.5" onClick={(e) => e.stopPropagation()}>
+      {(task.subtasks ?? []).map((s) => (
+        <label key={s.id} className="flex cursor-pointer items-start gap-2.5 rounded py-1.5 md:py-1">
+          <input
+            type="checkbox" checked={pending[s.id] ?? s.done}
+            onChange={() => { setPending((p) => ({ ...p, [s.id]: !(p[s.id] ?? s.done) })); onToggle(s.id) }}
+            className="mt-0.5 size-4 shrink-0 cursor-pointer rounded accent-[var(--accent)]"
+            aria-label={`Point "${s.title}"`}
+          />
+          <span className={cn('text-[13px] leading-snug [overflow-wrap:anywhere]', s.done && 'text-muted line-through')}>{s.title}</span>
+        </label>
+      ))}
+      <form onSubmit={submit} className="flex items-center gap-2 py-1">
+        <Plus size={14} className="shrink-0 text-faint" />
+        <input
+          value={value} onChange={(e) => setValue(e.target.value)}
+          onPaste={(e) => { const t = e.clipboardData.getData('text'); if (t.includes('\n')) { e.preventDefault(); onAdd(t) } }}
+          placeholder="Add a point" aria-label={`Add a point to "${task.title}"`}
+          className="h-8 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-faint md:h-6 md:text-[13px]"
+        />
+      </form>
     </div>
   )
 }

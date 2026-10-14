@@ -69,3 +69,85 @@ test('phone: add tasks from the bottom composer, switch list/timeline', async ({
     await u.remove()
   }
 })
+
+test('phone: full titles, #groups, collapsible sections, checklists', async ({ page, context }) => {
+  const u = await tempUser('groups')
+  try {
+    const { data: { session } } = await u.client.auth.getSession()
+    const ref = new URL(env.VITE_SUPABASE_URL).hostname.split('.')[0]
+    await context.addInitScript(([k, v]) => localStorage.setItem(k, v), [`sb-${ref}-auth-token`, JSON.stringify(session)])
+    const db = (t: string) => admin.from(t).select('*').eq('user_id', u.id)
+    await page.goto('/')
+    const composer = page.getByLabel('Quick add task')
+    const chips = page.locator('form').filter({ has: composer })
+
+    // A long title is shown in full, on several lines, without widening the page
+    const long = 'Make an automated weekly report for the team and send it before the Monday standup'
+    await composer.fill(long)
+    await composer.press('Enter')
+    const title = page.getByText(long, { exact: true })
+    await expect(title).toBeVisible()
+    const box = (await title.boundingBox())!
+    expect(box.height).toBeGreaterThan(30) // wrapped onto 2+ lines
+    expect(box.x + box.width).toBeLessThanOrEqual(390)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+
+    // #work creates the group; a second #work reuses it
+    await composer.fill('#work Standup 10am')
+    await expect(chips.getByText('#Work (new)')).toBeVisible()
+    await composer.press('Enter')
+    await composer.fill('#WORK Fix flaky test')
+    await expect(chips.getByText('#Work', { exact: true })).toBeVisible()
+    await composer.press('Enter')
+    await composer.blur()
+    const work = page.getByRole('region', { name: 'Work group' })
+    await expect(work.getByText('Standup')).toBeVisible()
+    await expect(work.getByText('Fix flaky test')).toBeVisible()
+    await expect.poll(async () => (await db('task_groups')).data?.map((g: { title: string }) => g.title)).toEqual(['Work'])
+    const groupId = (await db('task_groups')).data![0].id
+    await expect.poll(async () => (await db('tasks')).data?.filter((t: { group_id: string }) => t.group_id === groupId).length).toBe(2)
+
+    // Collapse is remembered across reloads
+    await work.getByRole('button', { name: /Work/ }).first().tap()
+    await expect(work.getByText('Standup')).toBeHidden()
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Work group' }).getByText('Standup')).toBeHidden()
+    await page.getByRole('region', { name: 'Work group' }).getByRole('button', { name: /Work/ }).first().tap()
+    await expect(work.getByText('Standup')).toBeVisible()
+
+    // Checklist: add points in the editor (paste a list), tick them inline → task completes / re-opens
+    await work.getByText('Fix flaky test').tap()
+    const point = page.getByLabel('Add a point')
+    await point.evaluate((el) => {
+      const dt = new DataTransfer()
+      dt.setData('text/plain', '- Reproduce locally\n- Add retry guard')
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+    })
+    await expect(page.getByLabel('Point 2', { exact: true })).toHaveValue('Add retry guard')
+    await page.getByRole('button', { name: 'Save' }).tap()
+    await expect(work.getByRole('button', { name: 'Checklist 0 of 2', exact: true })).toBeVisible()
+    const fixDone = async () => !!(await db('tasks')).data?.find((t: { title: string }) => t.title === 'Fix flaky test')?.done_at
+    await work.getByLabel('Point "Reproduce locally"').check()
+    await work.getByLabel('Point "Add retry guard"').check()
+    await expect.poll(fixDone).toBe(true)
+    await expect(work.getByRole('checkbox', { name: 'Mark "Fix flaky test" not done' })).toBeVisible()
+    await work.getByRole('button', { name: 'Checklist 2 of 2', exact: true }).tap() // done task's checklist starts collapsed; open it
+    await work.getByLabel('Point "Add retry guard"').uncheck()
+    await expect.poll(fixDone).toBe(false)
+
+    // Rename, then delete the group: its tasks stay, ungrouped
+    await work.getByRole('button', { name: 'Edit group Work', exact: true }).tap()
+    await page.getByLabel('Name', { exact: true }).fill('Office')
+    await page.getByRole('button', { name: 'Save' }).tap()
+    const office = page.getByRole('region', { name: 'Office group' })
+    await expect(office.getByText('Standup')).toBeVisible()
+    await office.getByRole('button', { name: 'Edit group Office', exact: true }).tap()
+    await page.getByRole('button', { name: 'Delete group' }).tap()
+    await page.getByRole('button', { name: /Delete group\? Tasks are kept/ }).tap()
+    await expect(page.getByRole('region', { name: 'Tasks' }).getByText('Standup')).toBeVisible()
+    await expect.poll(async () => (await db('task_groups')).data?.length).toBe(0)
+    await expect.poll(async () => (await db('tasks')).data?.length).toBe(3)
+  } finally {
+    await u.remove()
+  }
+})

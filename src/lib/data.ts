@@ -2,7 +2,8 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { supabase } from './supabase'
 import { queryClient, SYNC_SCOPE, type DeleteVars, type LogVars, type UpsertManyVars, type UpsertVars } from './queryClient'
-import type { LearningGoal, LearningTopic, LearningTrack, Routine, RoutineLog, Settings, Task } from './types'
+import type { LearningGoal, LearningTopic, LearningTrack, Routine, RoutineLog, Settings, Task, TaskGroup } from './types'
+import { toggleSubtask } from './domain/tasks'
 import { logKey } from './domain/stats'
 
 const PAGE = 1000 // PostgREST max rows per request
@@ -19,6 +20,7 @@ async function fetchAll<T>(table: string, columns = '*'): Promise<T[]> {
 
 export const useRoutines = () => useQuery({ queryKey: ['routines'], queryFn: () => fetchAll<Routine>('routines') })
 export const useTasks = () => useQuery({ queryKey: ['tasks'], queryFn: () => fetchAll<Task>('tasks') })
+export const useGroups = () => useQuery({ queryKey: ['task_groups'], queryFn: () => fetchAll<TaskGroup>('task_groups') })
 export const useTracks = () => useQuery({ queryKey: ['learning_tracks'], queryFn: () => fetchAll<LearningTrack>('learning_tracks') })
 export const useGoals = () => useQuery({ queryKey: ['learning_goals'], queryFn: () => fetchAll<LearningGoal>('learning_goals') })
 export interface VaultRow { user_id: string; recovery_wrapped_key: string; recovery_iv: string; version: number }
@@ -86,6 +88,14 @@ export function useMutations() {
       upsert.mutate({ table: 'tasks', row: row({ ...t, done_at: done ? new Date().toISOString() : null }) })
       syncTopic(t.topic_id, done)
     },
+    /** Tick a checklist point; completing/reopening the task also syncs a linked learning topic. */
+    toggleSubtask: (t: Task, subtaskId: string) => {
+      const next = toggleSubtask(t, subtaskId, new Date().toISOString())
+      upsert.mutate({ table: 'tasks', row: row(next) })
+      if (!!next.done_at !== !!t.done_at) syncTopic(t.topic_id, !!next.done_at)
+    },
+    saveGroup: (g: TaskGroup) => upsert.mutate({ table: 'task_groups', row: row(g) }),
+    deleteGroup: (id: string) => remove.mutate({ table: 'task_groups', id }),
     saveRoutine: (r: Routine) => upsert.mutate({ table: 'routines', row: row(r) }),
     saveTrack: (t: LearningTrack) => upsert.mutate({ table: 'learning_tracks', row: row(t) }),
     saveGoal: (g: LearningGoal) => upsert.mutate({ table: 'learning_goals', row: row(g) }),

@@ -2,7 +2,7 @@ import { parseQuickAdd } from './quickAdd'
 
 describe('parseQuickAdd', () => {
   it('returns plain title when no tokens', () => {
-    expect(parseQuickAdd('Review PR')).toEqual({ title: 'Review PR', startTime: null, durationMin: null, dayOffset: 0, url: null })
+    expect(parseQuickAdd('Review PR')).toEqual({ title: 'Review PR', startTime: null, durationMin: null, dayOffset: 0, url: null, group: null })
   })
   it('parses 24h time and hour duration', () => {
     expect(parseQuickAdd('Deep work 10:00 2h')).toMatchObject({ title: 'Deep work', startTime: '10:00', durationMin: 120 })
@@ -32,6 +32,12 @@ describe('parseQuickAdd', () => {
     })
     expect(parseQuickAdd('Revise https://leetcode.com/problems/two-sum')).toMatchObject({ title: 'Revise', url: 'https://leetcode.com/problems/two-sum' })
     expect(parseQuickAdd('Review PR')).toMatchObject({ url: null })
+  })
+  it('reads a #group tag (must start with a letter)', () => {
+    expect(parseQuickAdd('#work fix flaky test 10am')).toMatchObject({ title: 'fix flaky test', group: 'work', startTime: '10:00' })
+    expect(parseQuickAdd('Call bank #Personal')).toMatchObject({ title: 'Call bank', group: 'Personal' })
+    expect(parseQuickAdd('Review PR #42')).toMatchObject({ title: 'Review PR #42', group: null })
+    expect(parseQuickAdd('#side-project ship v1')).toMatchObject({ group: 'side-project', title: 'ship v1' })
   })
   it('rejects invalid times as text', () => {
     expect(parseQuickAdd('Ship 25:00')).toMatchObject({ title: 'Ship 25:00', startTime: null })

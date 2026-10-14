@@ -25,7 +25,9 @@ createRoot(document.getElementById('root')!).render(
       <PersistQueryClientProvider
         client={queryClient}
         persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 7, buster: 'v1' }}
-        onSuccess={() => queryClient.resumePausedMutations()}
+        // Cached data shows instantly; then replay queued edits and re-check the server, since the
+        // restored snapshot can lag (it's written at most once a second) or be stale from another device.
+        onSuccess={() => queryClient.resumePausedMutations().then(() => queryClient.invalidateQueries())}
       >
         <AuthProvider>
           <App />

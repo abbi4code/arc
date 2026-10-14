@@ -14,11 +14,16 @@ try {
   const tp = await a.client.from('learning_topics').insert({ goal_id: gl.data?.id, title: 'A topic' }).select().single()
   check('A can create learning rows', !tr.error && !gl.error && !tp.error, tr.error?.message ?? gl.error?.message ?? tp.error?.message)
 
+  const grp = await a.client.from('task_groups').insert({ title: 'A work' }).select().single()
+  check('A can create a task group', !grp.error, grp.error?.message)
+  const grouped = await a.client.from('tasks').insert({ title: 'grouped', date: today, group_id: grp.data?.id, subtasks: [{ id: '1', title: 'x', done: false }] })
+  check('A can put a task (with checklist) in their group', !grouped.error, grouped.error?.message)
+
   const v = await a.client.from('vault').insert({ recovery_wrapped_key: 'ct', recovery_iv: 'iv' })
   const vi = await a.client.from('vault_items').insert({ ciphertext: 'ct', iv: 'iv' }).select().single()
   check('A can create vault rows', !v.error && !vi.error, v.error?.message ?? vi.error?.message)
 
-  for (const table of ['routines', 'tasks', 'routine_logs', 'settings', 'push_subscriptions', 'learning_tracks', 'learning_goals', 'learning_topics', 'vault', 'vault_passkeys', 'vault_items']) {
+  for (const table of ['routines', 'tasks', 'routine_logs', 'settings', 'push_subscriptions', 'learning_tracks', 'learning_goals', 'learning_topics', 'vault', 'vault_passkeys', 'vault_items', 'task_groups']) {
     const { data } = await b.client.from(table).select('*')
     check(`B sees none of A's ${table}`, (data ?? []).every((row) => row.user_id === b.id))
   }
@@ -41,6 +46,11 @@ try {
   check("B cannot link a task to A's topic", !!k2.error, k2.error?.code)
   const k3 = await a.client.from('tasks').insert({ title: 'plan', date: today, topic_id: tp.data.id })
   check('A can link a task to their own topic', !k3.error, k3.error?.message)
+
+  const gx = await b.client.from('tasks').insert({ title: 'x', date: today, group_id: grp.data.id })
+  check("B cannot put a task in A's group", !!gx.error, gx.error?.code)
+  const bad = await a.client.from('tasks').insert({ title: 'x', date: today, subtasks: { not: 'an array' } })
+  check('checklist must be a list', !!bad.error, bad.error?.code)
 
   const vf = await b.client.from('vault_items').insert({ ciphertext: 'x', iv: 'x', user_id: a.id })
   check("B cannot write into A's vault", !!vf.error, vf.error?.code)

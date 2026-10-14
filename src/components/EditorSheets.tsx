@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Archive, ArchiveRestore, GraduationCap, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, GraduationCap, Plus, Trash2, X } from 'lucide-react'
 import { Button, Field, Input } from './primitives'
 import { Sheet } from './Sheet'
 import type { Editing } from './Editor'
-import { useGoals, useMutations, useTopics, useTracks } from '@/lib/data'
+import { useGoals, useGroups, useMutations, useTopics, useTracks } from '@/lib/data'
+import { addSubtasks } from '@/lib/domain/tasks'
 import { todayISO } from '@/lib/domain/dates'
-import type { LearningGoal, LearningTopic, LearningTrack, Routine, Task, TrackStatus } from '@/lib/types'
+import type { LearningGoal, LearningTopic, LearningTrack, Routine, Subtask, Task, TaskGroup, TrackStatus } from '@/lib/types'
 import { LinkList } from './learning'
 import { useNavigate } from 'react-router-dom'
 import { COLORS, WEEKDAY_NAMES, cn } from '@/lib/ui'
@@ -22,6 +23,9 @@ export default function EditorSheets({ editing, close }: { editing: Editing; clo
       </Sheet>
       <Sheet open={editing?.kind === 'goal'} onOpenChange={(o) => !o && close()} title={editing?.kind === 'goal' && editing.goal.id ? 'Edit goal' : 'New goal'}>
         {editing?.kind === 'goal' && <GoalForm initial={editing.goal} onDone={close} />}
+      </Sheet>
+      <Sheet open={editing?.kind === 'group'} onOpenChange={(o) => !o && close()} title="Group">
+        {editing?.kind === 'group' && <GroupForm initial={editing.group} onDone={close} />}
       </Sheet>
       <Sheet open={editing?.kind === 'topic'} onOpenChange={(o) => !o && close()} title="Topic">
         {editing?.kind === 'topic' && <TopicForm initial={editing.topic} onDone={close} />}
@@ -58,10 +62,26 @@ function TaskForm({ initial, onDone }: { initial: Partial<Task>; onDone: () => v
   const [time, setTime] = useState(hm(initial.start_time))
   const [duration, setDuration] = useState(initial.duration_min ?? (initial.start_time ? 30 : 0))
   const [notes, setNotes] = useState(initial.notes ?? '')
+  const { data: groupsData } = useGroups()
+  const groups = [...(groupsData ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+  const { saveGroup } = useMutations()
+  const [groupId, setGroupId] = useState<string>(initial.group_id ?? '')
+  const [newGroup, setNewGroup] = useState<string | null>(null)
+  const [subtasks, setSubtasks] = useState<Subtask[]>(initial.subtasks ?? [])
+  const [point, setPoint] = useState('')
+  const addPoints = (text: string) => setSubtasks((list) => addSubtasks({ subtasks: list } as Task, text).subtasks ?? list)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
+    let group_id: string | null = groupId || null
+    if (newGroup?.trim()) {
+      const g: TaskGroup = { id: crypto.randomUUID(), title: newGroup.trim(), color: Object.keys(COLORS)[groups.length % Object.keys(COLORS).length], sort_order: Date.now() }
+      saveGroup(g)
+      group_id = g.id
+    }
+    const pending = point.trim() ? addSubtasks({ subtasks } as Task, point).subtasks ?? subtasks : subtasks
+    const allDone = pending.length > 0 && pending.every((x) => x.done)
     saveTask({
       id: initial.id ?? crypto.randomUUID(),
       title: title.trim(),
@@ -72,6 +92,10 @@ function TaskForm({ initial, onDone }: { initial: Partial<Task>; onDone: () => v
       done_at: initial.done_at ?? null,
       sort_order: initial.sort_order ?? Date.now(),
       topic_id: initial.topic_id ?? null,
+      group_id,
+      subtasks: pending,
+      // a checklist that just became fully ticked completes the task; a new open point re-opens it
+      ...(pending.length ? { done_at: allDone ? (initial.done_at ?? new Date().toISOString()) : null } : {}),
     })
     onDone()
   }
@@ -86,6 +110,43 @@ function TaskForm({ initial, onDone }: { initial: Partial<Task>; onDone: () => v
         <div className="col-span-2 sm:col-span-1"><Field label="Date"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></Field></div>
         <Field label="Start"><Input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
         <Field label="Duration"><DurationSelect value={duration} onChange={setDuration} /></Field>
+      </div>
+      <Field label="Group">
+        {newGroup === null ? (
+          <select
+            value={groupId}
+            onChange={(e) => (e.target.value === '__new' ? setNewGroup('') : setGroupId(e.target.value))}
+            className="h-10 w-full rounded-md border border-line bg-panel-2 px-2 text-base outline-none focus:border-accent/60 md:h-9 md:text-[13px]"
+          >
+            <option value="">No group</option>
+            {groups.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+            <option value="__new">+ New group…</option>
+          </select>
+        ) : (
+          <div className="flex gap-2">
+            <Input autoFocus value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="e.g. Work, Personal, Errands" maxLength={40} />
+            <Button type="button" variant="ghost" size="icon" aria-label="Cancel new group" onClick={() => setNewGroup(null)}><X size={15} /></Button>
+          </div>
+        )}
+      </Field>
+      <div role="group" aria-label="Checklist" className="grid gap-1.5">
+        <span className="text-xs font-medium text-muted">Checklist</span>
+        {subtasks.map((st, i) => (
+          <div key={st.id} className="flex items-center gap-2">
+            <input type="checkbox" checked={st.done} aria-label={`Point ${i + 1} done`}
+              onChange={() => setSubtasks((l) => l.map((x) => (x.id === st.id ? { ...x, done: !x.done } : x)))}
+              className="size-4 shrink-0 accent-[var(--accent)]" />
+            <Input value={st.title} aria-label={`Point ${i + 1}`}
+              onChange={(e) => setSubtasks((l) => l.map((x) => (x.id === st.id ? { ...x, title: e.target.value } : x)))} />
+            <Button type="button" variant="ghost" size="icon" aria-label={`Remove point ${i + 1}`} onClick={() => setSubtasks((l) => l.filter((x) => x.id !== st.id))}><X size={15} /></Button>
+          </div>
+        ))}
+        <div className="flex items-center gap-2">
+          <Plus size={14} className="shrink-0 text-faint" />
+          <Input value={point} onChange={(e) => setPoint(e.target.value)} placeholder="Add a point (paste a list to add many)" aria-label="Add a point"
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (point.trim()) { addPoints(point); setPoint('') } } }}
+            onPaste={(e) => { const t = e.clipboardData.getData('text'); if (t.includes('\n')) { e.preventDefault(); addPoints(t) } }} />
+        </div>
       </div>
       <Field label="Notes">
         <textarea
@@ -366,6 +427,31 @@ function TopicForm({ initial, onDone }: { initial: LearningTopic; onDone: () => 
       <LinkList text={notes} />
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <Button type="button" variant="danger" size="sm" onClick={() => { deleteTopic(initial.id); onDone() }}><Trash2 size={14} /> Delete</Button>
+        <Button type="submit" variant="primary">Save</Button>
+      </div>
+    </form>
+  )
+}
+
+function GroupForm({ initial, onDone }: { initial: TaskGroup; onDone: () => void }) {
+  const { saveGroup, deleteGroup } = useMutations()
+  const [title, setTitle] = useState(initial.title)
+  const [color, setColor] = useState(initial.color)
+  const [confirm, setConfirm] = useState(false)
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    if (!title.trim()) return
+    saveGroup({ ...initial, title: title.trim(), color })
+    onDone()
+  }
+  return (
+    <form onSubmit={submit} className="grid grid-cols-1 gap-4">
+      <Field label="Name"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} maxLength={40} required /></Field>
+      <Field label="Color" group><ColorPicker value={color} onChange={setColor} /></Field>
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <Button type="button" variant="danger" size="sm" onClick={() => (confirm ? (deleteGroup(initial.id), onDone()) : setConfirm(true))}>
+          <Trash2 size={14} /> {confirm ? 'Delete group? Tasks are kept' : 'Delete group'}
+        </Button>
         <Button type="submit" variant="primary">Save</Button>
       </div>
     </form>

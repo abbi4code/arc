@@ -32,7 +32,7 @@ export default function TrackPage() {
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 basis-56 items-center gap-2.5">
           <span className="size-3 shrink-0 rounded-full" style={{ background: color }} />
-          <h1 className="truncate text-2xl font-semibold tracking-tight">{track.title}</h1>
+          <h1 className="text-2xl font-semibold leading-tight tracking-tight [overflow-wrap:anywhere]">{track.title}</h1>
           {track.status !== 'active' && <span className="rounded bg-panel-2 px-1.5 py-0.5 text-[11px] capitalize text-muted">{track.status}</span>}
         </div>
         <div className="flex gap-2">
@@ -78,9 +78,9 @@ function GoalCard({ goal, track }: { goal: LearningGoal; track: LearningTrack })
     <section className="overflow-hidden rounded-xl border border-line bg-panel">
       <div className="flex items-start gap-3 p-4">
         <button onClick={() => setOpen((o) => !o)} className="grid min-w-0 flex-1 gap-2 text-left cursor-pointer" aria-expanded={open}>
-          <div className="flex min-w-0 items-center gap-2">
-            <ChevronDown size={15} className={cn('shrink-0 text-faint transition-transform', !open && '-rotate-90')} />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{goal.title}</span>
+          <div className="flex min-w-0 items-start gap-2">
+            <ChevronDown size={15} className={cn('mt-0.5 shrink-0 text-faint transition-transform', !open && '-rotate-90')} />
+            <span className="min-w-0 flex-1 text-sm font-semibold leading-snug [overflow-wrap:anywhere]">{goal.title}</span>
             <StatusBadge status={status} progress={progress} expected={expected} />
           </div>
           <div className="flex items-center gap-2 pl-6">
@@ -118,11 +118,11 @@ function TopicRow({ topic, color, plannedTask }: { topic: LearningTopic; color: 
     <div
       role="button" tabIndex={0} onClick={() => editTopic(topic)}
       onKeyDown={(e) => e.key === 'Enter' && editTopic(topic)}
-      className="group -mx-2 flex min-h-11 items-center gap-3 rounded-md px-2 outline-none cursor-pointer hover:bg-panel-2 focus-visible:bg-panel-2 md:min-h-9"
+      className="group -mx-2 flex min-h-11 items-center gap-3 rounded-md px-2 py-1.5 outline-none cursor-pointer hover:bg-panel-2 focus-visible:bg-panel-2 md:min-h-9 md:py-1"
     >
       <Check checked={done} color={color} label={`Mark "${topic.title}" ${done ? 'not done' : 'done'}`}
         onChange={() => saveTopic({ ...topic, done_at: done ? null : new Date().toISOString() })} />
-      <span className={cn('min-w-0 flex-1 truncate text-sm md:text-[13px]', done && 'text-muted line-through')}>{topic.title}</span>
+      <span className={cn('min-w-0 flex-1 text-sm leading-snug [overflow-wrap:anywhere] md:text-[13px]', done && 'text-muted line-through')}>{topic.title}</span>
       {hasMoreNotes && <NotebookPen size={13} className="shrink-0 text-faint" aria-label="Has notes" />}
       {url && <OpenLink url={url} label={topic.title} />}
       {!done && (plannedTask ? (

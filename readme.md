@@ -2,7 +2,9 @@
 
 Personal routine tracker + day planner. Website and installable PWA, synced through Supabase, with push reminders.
 
-- **Today** — checklist (overdue · routines · tasks) + 24h timeline. Quick add: `Deep work 10:00 2h`, `Gym tomorrow 7am`, `Focus 9:00-11:30`.
+- **Today** — overdue · learning deadlines · routines · tasks by **group** + 24h timeline. Quick add: `Deep work 10:00 2h`,
+  `Gym tomorrow 7am`, `#work Standup 10am` (creates/uses the Work group), pasted links. Tasks can hold a **checklist**;
+  ticking the last point completes the task.
 - **Routines** — repeat on chosen weekdays, optional time/duration/color; archive keeps history.
 - **Stats** — 12-month heatmap, streaks (scheduled days only), 7/30-day rates.
 - **Settings** — timezone, reminder lead time, push per device, theme.

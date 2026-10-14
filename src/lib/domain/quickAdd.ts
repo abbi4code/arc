@@ -7,6 +7,7 @@ export interface QuickAdd {
   durationMin: number | null
   dayOffset: number // 0 = selected day, 1 = the day after
   url: string | null // a pasted link, kept in the task notes
+  group: string | null // "#work" → "work" (resolved to a task group by the caller)
 }
 
 /** '10:00', '9:15am', '6pm', '@10' → minutes since midnight, or null */
@@ -39,9 +40,11 @@ export function parseQuickAdd(input: string): QuickAdd {
   let duration: number | null = null
   let dayOffset: number | null = null
   let url: string | null = null
+  let group: string | null = null
 
   for (const tok of input.trim().split(/\s+/).filter(Boolean)) {
     if (url === null && isLink(tok)) { url = topicFromUrl(tok)!.url; continue }
+    if (group === null && /^#[a-z][\w-]*$/i.test(tok)) { group = tok.slice(1); continue }
     const lower = tok.toLowerCase()
     if (dayOffset === null && /^(today|tod)$/.test(lower)) { dayOffset = 0; continue }
     if (dayOffset === null && /^(tomorrow|tmr|tmrw)$/.test(lower)) { dayOffset = 1; continue }
@@ -69,5 +72,6 @@ export function parseQuickAdd(input: string): QuickAdd {
     durationMin: duration,
     dayOffset: dayOffset ?? 0,
     url,
+    group,
   }
 }

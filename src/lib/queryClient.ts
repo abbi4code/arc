@@ -20,16 +20,17 @@ export const persister = createAsyncStoragePersister({
 })
 
 type Row = { id: string }
-export type ListTable = 'tasks' | 'routines' | 'learning_tracks' | 'learning_goals' | 'learning_topics' | 'vault_items'
+export type ListTable = 'tasks' | 'routines' | 'learning_tracks' | 'learning_goals' | 'learning_topics' | 'vault_items' | 'task_groups'
 
 // Only columns the client owns; server fills user_id / timestamps.
 const COLUMNS: Record<ListTable, string[]> = {
-  tasks: ['id', 'title', 'date', 'start_time', 'duration_min', 'notes', 'done_at', 'sort_order', 'topic_id'],
+  tasks: ['id', 'title', 'date', 'start_time', 'duration_min', 'notes', 'done_at', 'sort_order', 'topic_id', 'group_id', 'subtasks'],
   routines: ['id', 'title', 'days_of_week', 'start_time', 'duration_min', 'color', 'starts_on', 'archived_at', 'sort_order'],
   learning_tracks: ['id', 'title', 'color', 'status', 'sort_order'],
   learning_goals: ['id', 'track_id', 'title', 'starts_on', 'target_date', 'sort_order'],
   learning_topics: ['id', 'goal_id', 'title', 'notes', 'done_at', 'sort_order'],
   vault_items: ['id', 'ciphertext', 'iv', 'version'], // already encrypted on-device
+  task_groups: ['id', 'title', 'color', 'sort_order'],
 }
 
 /** Server-side cascades, mirrored in the cache so children disappear immediately. */
@@ -48,6 +49,9 @@ function removeCascade(table: ListTable, ids: Set<string>) {
   if (table === 'learning_topics') // tasks.topic_id is "on delete set null"
     queryClient.setQueryData<(Row & { topic_id?: string | null })[]>(['tasks'], (old) =>
       old?.map((t) => (t.topic_id && ids.has(t.topic_id) ? { ...t, topic_id: null } : t)))
+  if (table === 'task_groups') // tasks.group_id is "on delete set null": tasks stay, ungrouped
+    queryClient.setQueryData<(Row & { group_id?: string | null })[]>(['tasks'], (old) =>
+      old?.map((t) => (t.group_id && ids.has(t.group_id) ? { ...t, group_id: null } : t)))
 }
 const pick = (table: ListTable, row: Record<string, unknown>) =>
   Object.fromEntries(COLUMNS[table].filter((c) => c in row).map((c) => [c, row[c]]))

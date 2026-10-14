@@ -31,6 +31,8 @@ export interface Task {
   done_at: string | null
   sort_order: number
   topic_id?: string | null
+  group_id?: string | null
+  subtasks?: Subtask[]
   created_at?: string
   updated_at?: string
 }
@@ -68,5 +70,18 @@ export interface LearningTopic {
   title: string
   notes: string | null
   done_at: string | null
+  sort_order: number
+}
+
+export interface Subtask {
+  id: string
+  title: string
+  done: boolean
+}
+
+export interface TaskGroup {
+  id: string
+  title: string
+  color: string
   sort_order: number
 }

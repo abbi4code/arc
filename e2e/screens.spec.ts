@@ -46,12 +46,18 @@ async function seed(client: any) {
     topic(3, 'Attention', true), topic(3, 'Tokenization'), topic(3, 'Train a tiny GPT'),
   ]).select()
   await client.from('tasks').insert({ title: 'Dijkstra', date: iso(0), start_time: '18:00', duration_min: 60, topic_id: ts.find((t: { title: string }) => t.title === 'Dijkstra').id })
+  const { data: [work, personal] } = await client.from('task_groups').insert([
+    { title: 'Work', color: 'blue', sort_order: 0 }, { title: 'Personal', color: 'green', sort_order: 1 },
+  ]).select()
   await client.from('tasks').insert([
-    { title: 'Deep work: auth refactor', date: iso(0), start_time: '10:00', duration_min: 120 },
-    { title: 'Standup', date: iso(0), start_time: '09:30', duration_min: 15, done_at: new Date().toISOString() },
+    { title: 'Deep work: auth refactor', date: iso(0), start_time: '10:00', duration_min: 120, group_id: work.id },
+    { title: 'Standup', date: iso(0), start_time: '09:30', duration_min: 15, done_at: new Date().toISOString(), group_id: work.id },
+    { title: 'Make an automated weekly report for the team and send it before the Monday standup', date: iso(0), group_id: work.id,
+      subtasks: [{ id: 's1', title: 'Pull metrics from the dashboard', done: true }, { id: 's2', title: 'Write the summary', done: false }, { id: 's3', title: 'Send to #team-updates', done: false }] },
+    { title: 'Pay electricity bill', date: iso(0), group_id: personal.id },
     { title: 'Review PR #42', date: iso(0) },
-    { title: 'Reply to recruiter email', date: iso(-1) },
-  ])
+    { title: 'Remind Varinder about the visa appointment documents', date: iso(-1), start_time: '11:30', duration_min: 15, group_id: personal.id },
+  ].map((t) => ({ start_time: null, duration_min: null, done_at: null, group_id: null, subtasks: [], ...t }))) // bulk insert needs identical keys
 }
 
 async function shot(page: Page, name: string) {
@@ -73,6 +79,10 @@ for (const theme of ['midnight', 'sepia']) {
       await page.goto('/')
       await expect(page.getByText('Deep work: auth refactor').first()).toBeVisible()
       await shot(page, `${theme}-m-today`)
+      await page.getByRole('region', { name: 'Work group' }).scrollIntoViewIfNeeded()
+      await page.getByRole('region', { name: 'Work group' }).evaluate((el) => el.scrollIntoView({ block: 'start' }))
+      await shot(page, `${theme}-m-today-groups`)
+      await page.locator('main section').first().evaluate((el) => el.scrollTo({ top: 0 }))
       await page.getByLabel('Quick add task').click()
       await page.getByLabel('Quick add task').fill('Gym tomorrow 7am 1h')
       await shot(page, `${theme}-m-composing`)

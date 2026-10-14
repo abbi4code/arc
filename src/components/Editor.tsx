@@ -1,6 +1,6 @@
 import { createContext, Suspense, useContext, useState, type ReactNode } from 'react'
 import { preloadable } from '@/lib/preloadable'
-import type { LearningGoal, LearningTopic, LearningTrack, Routine, Task } from '@/lib/types'
+import type { LearningGoal, LearningTopic, LearningTrack, Routine, Task, TaskGroup } from '@/lib/types'
 
 export type Editing =
   | { kind: 'task'; task: Partial<Task> & { id?: string } }
@@ -8,6 +8,7 @@ export type Editing =
   | { kind: 'track'; track: Partial<LearningTrack> }
   | { kind: 'goal'; goal: Partial<LearningGoal> & { track_id: string } }
   | { kind: 'topic'; topic: LearningTopic }
+  | { kind: 'group'; group: TaskGroup }
   | null
 
 export const EditorSheets = preloadable(() => import('./EditorSheets'))
@@ -18,9 +19,10 @@ type EditorApi = {
   editTrack: (t: Partial<LearningTrack>) => void
   editGoal: (g: Partial<LearningGoal> & { track_id: string }) => void
   editTopic: (t: LearningTopic) => void
+  editGroup: (g: TaskGroup) => void
 }
 const noop = () => {}
-const EditorContext = createContext<EditorApi>({ editTask: noop, editRoutine: noop, editTrack: noop, editGoal: noop, editTopic: noop })
+const EditorContext = createContext<EditorApi>({ editTask: noop, editRoutine: noop, editTrack: noop, editGoal: noop, editTopic: noop, editGroup: noop })
 
 export const useEditor = () => useContext(EditorContext)
 
@@ -36,6 +38,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         editTrack: (track) => open({ kind: 'track', track }),
         editGoal: (goal) => open({ kind: 'goal', goal }),
         editTopic: (topic) => open({ kind: 'topic', topic }),
+        editGroup: (group) => open({ kind: 'group', group }),
       }}
     >
       {children}

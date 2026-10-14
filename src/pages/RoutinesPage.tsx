@@ -70,8 +70,8 @@ function RoutineRow({ r, done, today, onOpen }: { r: Routine; done?: Set<string>
     <button onClick={onOpen} className="flex items-center gap-3 bg-panel px-4 py-3 text-left transition-colors hover:bg-panel-2 cursor-pointer">
       <span className="size-2.5 shrink-0 rounded-full" style={{ background: colorOf(r.color) }} />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium md:text-[13px]">{r.title}</div>
-        <div className="truncate text-xs text-muted">
+        <div className="text-sm font-medium leading-snug [overflow-wrap:anywhere] md:text-[13px]">{r.title}</div>
+        <div className="mt-0.5 text-xs text-muted">
           {describeDays(r.days_of_week)}
           {r.start_time && <span className="tabular font-mono"> · {r.start_time.slice(0, 5)}{r.duration_min ? `–${formatHM(minutesOf(r.start_time) + r.duration_min)}` : ''}</span>}
         </div>
