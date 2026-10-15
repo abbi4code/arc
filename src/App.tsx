@@ -14,13 +14,16 @@ const SettingsPage = preloadable(() => import('./pages/SettingsPage'))
 const LearningPage = preloadable(() => import('./pages/LearningPage'))
 const TrackPage = preloadable(() => import('./pages/TrackPage'))
 const VaultPage = preloadable(() => import('./pages/VaultPage'))
+const BoardsPage = preloadable(() => import('./pages/BoardsPage'))
+// Excalidraw is big: loaded when a board is opened, not prefetched at startup (the service worker still caches it for offline).
+const BoardEditorPage = preloadable(() => import('./pages/BoardEditorPage'))
 
 /** After first paint, warm the other chunks so navigation and dialogs never wait. */
 function usePrefetch(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
     const idle = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1500))
-    const id = idle(() => [RoutinesPage, LearningPage, TrackPage, StatsPage, SettingsPage, EditorSheets, CommandPalette].forEach((c) => c.preload()))
+    const id = idle(() => [RoutinesPage, LearningPage, TrackPage, BoardsPage, StatsPage, SettingsPage, EditorSheets, CommandPalette].forEach((c) => c.preload()))
     return () => window.cancelIdleCallback?.(id as number)
   }, [enabled])
 }
@@ -40,6 +43,9 @@ export default function App() {
               <Route path="routines" element={<RoutinesPage />} />
               <Route path="learning" element={<LearningPage />} />
               <Route path="learning/:trackId" element={<TrackPage />} />
+              <Route path="boards" element={<BoardsPage />} />
+              <Route path="boards/f/:folderId" element={<BoardsPage />} />
+              <Route path="boards/:boardId" element={<BoardEditorPage />} />
               <Route path="stats" element={<StatsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="settings/passwords" element={<VaultPage />} />

@@ -6,11 +6,22 @@ Personal routine tracker + day planner. Website and installable PWA, synced thro
   `Gym tomorrow 7am`, `#work Standup 10am` (creates/uses the Work group), pasted links. Tasks can hold a **checklist**;
   ticking the last point completes the task.
 - **Routines** — repeat on chosen weekdays, optional time/duration/color; archive keeps history.
-- **Stats** — 12-month heatmap, streaks (scheduled days only), 7/30-day rates.
-- **Settings** — timezone, reminder lead time, push per device, theme.
+- **Boards** — Excalidraw whiteboards for system design, in nested folders (grid with thumbnails or list, search
+  across the tree, move, rename). Images and shape libraries (one-click install from libraries.excalidraw.com) sync too.
+- **Settings** — Profile (account, **Stats**: 12-month heatmap, streaks on scheduled days, 7/30-day rates), timezone,
+  reminder lead time, push per device, theme.
 - Keyboard: `⌘K` commands · `n` add · `j/k` move · `x` done · `←/→` day · `t` today.
 - Works offline: edits queue locally and sync in order on reconnect.
 - Themes: Midnight, Dusk, Forest, Sepia, Light, System (contrast-tested in `src/lib/themes.test.ts`).
+
+## Boards
+
+Each board saves to this device first (IndexedDB), then uploads only its newest version with a version check.
+If another device saved in between, the two are merged per shape (Excalidraw's `reconcileElements`; the newer
+edit of each shape wins), so drawing offline is one upload on reconnect and two devices never overwrite each other.
+Code: `src/lib/boards/sync.ts` (engine), `src/pages/BoardEditorPage.tsx` (the only module that loads Excalidraw).
+Excalidraw's fonts are served by the app (`vite.config.ts`), and only the editor's own code is precached for
+offline; Mermaid diagrams and other languages load on demand when online.
 
 ## Passwords (Settings → Passwords)
 

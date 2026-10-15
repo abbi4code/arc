@@ -1,8 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { supabase } from './supabase'
-import { queryClient, SYNC_SCOPE, type DeleteVars, type LogVars, type UpsertManyVars, type UpsertVars } from './queryClient'
-import type { LearningGoal, LearningTopic, LearningTrack, Routine, RoutineLog, Settings, Task, TaskGroup } from './types'
+import { queryClient, SYNC_SCOPE, type BoardFileVars, type DeleteVars, type LogVars, type UpsertManyVars, type UpsertVars } from './queryClient'
+import type { Board, BoardFolder, LearningGoal, LearningTopic, LearningTrack, Routine, RoutineLog, Settings, Task, TaskGroup } from './types'
+import type { LibraryItems } from './boards/store'
 import { toggleSubtask } from './domain/tasks'
 import { logKey } from './domain/stats'
 
@@ -21,6 +22,11 @@ async function fetchAll<T>(table: string, columns = '*'): Promise<T[]> {
 export const useRoutines = () => useQuery({ queryKey: ['routines'], queryFn: () => fetchAll<Routine>('routines') })
 export const useTasks = () => useQuery({ queryKey: ['tasks'], queryFn: () => fetchAll<Task>('tasks') })
 export const useGroups = () => useQuery({ queryKey: ['task_groups'], queryFn: () => fetchAll<TaskGroup>('task_groups') })
+// Board lists carry only metadata + thumbnail; scenes and images load per board (src/lib/boards).
+export const useFolders = () =>
+  useQuery({ queryKey: ['whiteboard_folders'], queryFn: () => fetchAll<BoardFolder>('whiteboard_folders', 'id,parent_id,title,sort_order,created_at,updated_at') })
+export const useBoards = () =>
+  useQuery({ queryKey: ['whiteboards'], queryFn: () => fetchAll<Board>('whiteboards', 'id,folder_id,title,thumbnail,sort_order,created_at,updated_at') })
 export const useTracks = () => useQuery({ queryKey: ['learning_tracks'], queryFn: () => fetchAll<LearningTrack>('learning_tracks') })
 export const useGoals = () => useQuery({ queryKey: ['learning_goals'], queryFn: () => fetchAll<LearningGoal>('learning_goals') })
 export interface VaultRow { user_id: string; recovery_wrapped_key: string; recovery_iv: string; version: number }
@@ -79,6 +85,8 @@ export function useMutations() {
     const topic = queryClient.getQueryData<LearningTopic[]>(['learning_topics'])?.find((t) => t.id === topicId)
     if (topic && !!topic.done_at !== done) saveTopic({ ...topic, done_at: done ? new Date().toISOString() : null })
   }
+  const boardFile = useMutation<void, Error, BoardFileVars>({ mutationKey: ['boardFile'], scope: SYNC_SCOPE })
+  const library = useMutation<void, Error, LibraryItems>({ mutationKey: ['library'], scope: SYNC_SCOPE })
   const log = useMutation<void, Error, LogVars>({ mutationKey: ['log'], scope: SYNC_SCOPE })
   const settings = useMutation<void, Error, Settings>({ mutationKey: ['settings'], scope: SYNC_SCOPE })
 
@@ -111,5 +119,11 @@ export function useMutations() {
     setRoutineDone: (routine_id: string, date: string, done: boolean) =>
       log.mutate({ id: crypto.randomUUID(), routine_id, date, done }),
     saveSettings: (s: Settings) => settings.mutate(s),
+    saveFolder: (f: BoardFolder) => upsert.mutate({ table: 'whiteboard_folders', row: row(f) }),
+    deleteFolder: (id: string) => remove.mutate({ table: 'whiteboard_folders', id }),
+    saveBoard: (b: Board) => upsert.mutate({ table: 'whiteboards', row: row(b) }),
+    deleteBoard: (id: string) => remove.mutate({ table: 'whiteboards', id }),
+    saveBoardFile: (f: BoardFileVars) => boardFile.mutate(f),
+    saveLibrary: (items: LibraryItems) => library.mutate(items),
   }
 }

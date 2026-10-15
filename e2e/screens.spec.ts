@@ -114,7 +114,8 @@ for (const theme of ['midnight', 'sepia']) {
       await shot(page, `${theme}-m-topic`)
       await page.keyboard.press('Escape')
 
-      await page.getByRole('link', { name: 'Stats' }).last().click()
+      await page.getByRole('link', { name: 'Settings' }).last().click()
+      await page.getByRole('link', { name: /Stats/ }).click()
       await expect(page.getByRole('img', { name: 'Daily completion heatmap' })).toBeVisible()
       await shot(page, `${theme}-m-stats`)
 

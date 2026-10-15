@@ -1,8 +1,10 @@
 import { Command } from 'cmdk'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, CalendarDays, CalendarPlus, CheckCircle2, Circle, GraduationCap, Palette, Plus, Repeat, Settings } from 'lucide-react'
+import { BarChart3, CalendarDays, CalendarPlus, CheckCircle2, Circle, FolderPlus, GraduationCap, KeyRound, Palette, Plus, Repeat, Settings, Shapes } from 'lucide-react'
 import { useEditor } from './Editor'
-import { useLogs, useMutations, useRoutines, useTasks } from '@/lib/data'
+import { useBoardActions } from './boards'
+import { useBoards, useFolders, useLogs, useMutations, useRoutines, useTasks } from '@/lib/data'
+import { pathLabel } from '@/lib/domain/boards'
 import { addDaysISO, todayISO } from '@/lib/domain/dates'
 import { routinesDueOn } from '@/lib/domain/routines'
 import { logKey } from '@/lib/domain/stats'
@@ -16,6 +18,9 @@ export default function CommandPalette({ open, setOpen }: { open: boolean; setOp
   const { data: tasks = [] } = useTasks()
   const { keys } = useLogs()
   const { setTaskDone, setRoutineDone } = useMutations()
+  const { data: boards = [] } = useBoards()
+  const { data: folders = [] } = useFolders()
+  const { createBoard } = useBoardActions()
   const today = todayISO()
 
   const run = (fn: () => void) => () => { setOpen(false); fn() }
@@ -37,6 +42,8 @@ export default function CommandPalette({ open, setOpen }: { open: boolean; setOp
           <Command.Item className={item} onSelect={run(() => editTask({ date: addDaysISO(today, 1) }))}><CalendarPlus size={15} /> New task for tomorrow</Command.Item>
           <Command.Item className={item} onSelect={run(() => editRoutine({ starts_on: today }))}><Repeat size={15} /> New routine</Command.Item>
           <Command.Item className={item} onSelect={run(() => editTrack({}))}><GraduationCap size={15} /> New learning track</Command.Item>
+          <Command.Item className={item} onSelect={run(() => createBoard(null))}><Shapes size={15} /> New board</Command.Item>
+          <Command.Item className={item} onSelect={run(() => navigate('/boards', { state: { newFolder: true } }))}><FolderPlus size={15} /> New board folder</Command.Item>
         </Command.Group>
         <Command.Group heading="Today" className="text-[11px] text-faint [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5">
           {routinesDueOn(routines, today).map((r) => {
@@ -58,9 +65,24 @@ export default function CommandPalette({ open, setOpen }: { open: boolean; setOp
           <Command.Item className={item} onSelect={run(() => navigate(`/?d=${addDaysISO(today, 1)}`))}><CalendarDays size={15} /> Tomorrow</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate('/routines'))}><Repeat size={15} /> Routines</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate('/learning'))}><GraduationCap size={15} /> Learning</Command.Item>
+          <Command.Item className={item} onSelect={run(() => navigate('/boards'))}><Shapes size={15} /> Boards</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate('/stats'))}><BarChart3 size={15} /> Stats</Command.Item>
+          <Command.Item className={item} onSelect={run(() => navigate('/settings/passwords'))}><KeyRound size={15} /> Passwords</Command.Item>
           <Command.Item className={item} onSelect={run(() => navigate('/settings'))}><Settings size={15} /> Settings</Command.Item>
         </Command.Group>
+        {boards.length > 0 && (
+          <Command.Group heading="Boards" className="text-[11px] text-faint [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5">
+            {[...boards].sort((a, b) => a.title.localeCompare(b.title)).map((b) => {
+              const path = pathLabel(folders, b.folder_id)
+              return (
+                <Command.Item key={b.id} value={`board ${b.title} ${path} ${b.id}`} className={item} onSelect={run(() => navigate(`/boards/${b.id}`))}>
+                  <Shapes size={15} /> <span className="min-w-0 flex-1 truncate">Open board: {b.title}</span>
+                  {path && <span className="max-w-[40%] shrink-0 truncate text-xs text-faint">{path}</span>}
+                </Command.Item>
+              )
+            })}
+          </Command.Group>
+        )}
         <Command.Group heading="Theme" className="text-[11px] text-faint [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5">
           {[...THEMES.map((t) => ({ id: t.id, name: t.name })), { id: 'system' as const, name: 'System' }].map((t) => (
             <Command.Item key={t.id} value={`theme ${t.name}`} className={item} onSelect={run(() => setTheme(t.id))}>

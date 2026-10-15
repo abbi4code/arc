@@ -4,6 +4,7 @@ import { del, get, set } from 'idb-keyval'
 import { toast } from 'sonner'
 import { supabase } from './supabase'
 import type { RoutineLog, Settings } from './types'
+import { dropBoardsLocally, type LibraryItems } from './boards/store'
 
 const WEEK = 1000 * 60 * 60 * 24 * 7
 
@@ -21,6 +22,7 @@ export const persister = createAsyncStoragePersister({
 
 type Row = { id: string }
 export type ListTable = 'tasks' | 'routines' | 'learning_tracks' | 'learning_goals' | 'learning_topics' | 'vault_items' | 'task_groups'
+  | 'whiteboard_folders' | 'whiteboards'
 
 // Only columns the client owns; server fills user_id / timestamps.
 const COLUMNS: Record<ListTable, string[]> = {
@@ -31,21 +33,24 @@ const COLUMNS: Record<ListTable, string[]> = {
   learning_topics: ['id', 'goal_id', 'title', 'notes', 'done_at', 'sort_order'],
   vault_items: ['id', 'ciphertext', 'iv', 'version'], // already encrypted on-device
   task_groups: ['id', 'title', 'color', 'sort_order'],
+  whiteboard_folders: ['id', 'parent_id', 'title', 'sort_order'],
+  whiteboards: ['id', 'folder_id', 'title', 'sort_order'], // scene/version/thumbnail sync via src/lib/boards/sync.ts
 }
 
 /** Server-side cascades, mirrored in the cache so children disappear immediately. */
-const CHILDREN: Partial<Record<ListTable, { table: ListTable; fk: string }>> = {
-  learning_tracks: { table: 'learning_goals', fk: 'track_id' },
-  learning_goals: { table: 'learning_topics', fk: 'goal_id' },
+const CHILDREN: Partial<Record<ListTable, { table: ListTable; fk: string }[]>> = {
+  learning_tracks: [{ table: 'learning_goals', fk: 'track_id' }],
+  learning_goals: [{ table: 'learning_topics', fk: 'goal_id' }],
+  whiteboard_folders: [{ table: 'whiteboard_folders', fk: 'parent_id' }, { table: 'whiteboards', fk: 'folder_id' }],
 }
 function removeCascade(table: ListTable, ids: Set<string>) {
-  const child = CHILDREN[table]
-  if (child) {
+  for (const child of CHILDREN[table] ?? []) {
     const childIds = new Set<string>()
     queryClient.setQueryData<(Row & Record<string, unknown>)[]>([child.table], (old) =>
       (old ?? []).filter((r) => (ids.has(r[child.fk] as string) ? (childIds.add(r.id), false) : true)))
     if (childIds.size) removeCascade(child.table, childIds)
   }
+  if (table === 'whiteboards') dropBoardsLocally(ids) // drafts + cached images on this device
   if (table === 'learning_topics') // tasks.topic_id is "on delete set null"
     queryClient.setQueryData<(Row & { topic_id?: string | null })[]>(['tasks'], (old) =>
       old?.map((t) => (t.topic_id && ids.has(t.topic_id) ? { ...t, topic_id: null } : t)))
@@ -147,5 +152,26 @@ queryClient.setMutationDefaults(['settings'], {
     queryClient.setQueryData(['settings'], (old: Settings | null | undefined) => ({ ...old, ...s }))
   },
   onError: (e: unknown) => reportError(e, 'settings', ['settings']),
+  scope: SYNC_SCOPE,
+})
+
+/** One image of a board, uploaded once (keyed by Excalidraw's content-hash file id). */
+export type BoardFileVars = { board_id: string; id: string; mime_type: string; data_url: string }
+queryClient.setMutationDefaults(['boardFile'], {
+  mutationFn: async (f: BoardFileVars) => {
+    const { error } = await supabase.from('whiteboard_files').upsert(f, { onConflict: 'board_id,id', ignoreDuplicates: true })
+    if (error) throw error
+  },
+  onError: (e: unknown) => reportError(e, 'image', []),
+  scope: SYNC_SCOPE,
+})
+
+/** The whole shape library (one row per user); the newest save wins. */
+queryClient.setMutationDefaults(['library'], {
+  mutationFn: async (items: LibraryItems) => {
+    const { error } = await supabase.from('whiteboard_library').upsert({ items })
+    if (error) throw error
+  },
+  onError: (e: unknown) => reportError(e, 'library', []),
   scope: SYNC_SCOPE,
 })

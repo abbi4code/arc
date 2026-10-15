@@ -85,3 +85,23 @@ export interface TaskGroup {
   color: string
   sort_order: number
 }
+
+export interface BoardFolder {
+  id: string
+  parent_id: string | null
+  title: string
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+/** Board metadata as listed in the browser. The scene itself is loaded separately (src/lib/boards). */
+export interface Board {
+  id: string
+  folder_id: string | null
+  title: string
+  thumbnail?: string | null
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}

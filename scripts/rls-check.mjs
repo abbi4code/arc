@@ -23,7 +23,7 @@ try {
   const vi = await a.client.from('vault_items').insert({ ciphertext: 'ct', iv: 'iv' }).select().single()
   check('A can create vault rows', !v.error && !vi.error, v.error?.message ?? vi.error?.message)
 
-  for (const table of ['routines', 'tasks', 'routine_logs', 'settings', 'push_subscriptions', 'learning_tracks', 'learning_goals', 'learning_topics', 'vault', 'vault_passkeys', 'vault_items', 'task_groups']) {
+  for (const table of ['routines', 'tasks', 'routine_logs', 'settings', 'push_subscriptions', 'learning_tracks', 'learning_goals', 'learning_topics', 'vault', 'vault_passkeys', 'vault_items', 'task_groups', 'whiteboard_folders', 'whiteboards', 'whiteboard_files', 'whiteboard_library']) {
     const { data } = await b.client.from(table).select('*')
     check(`B sees none of A's ${table}`, (data ?? []).every((row) => row.user_id === b.id))
   }

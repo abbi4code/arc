@@ -1,4 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import { ChevronLeft } from 'lucide-react'
 import { useLogs, useRoutines, useSettings, useTasks } from '@/lib/data'
 import { addDaysISO, todayISO, weekdayOf } from '@/lib/domain/dates'
 import { isRoutineDue } from '@/lib/domain/routines'
@@ -77,6 +79,7 @@ export default function StatsPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-6">
+      <Link to="/settings" className="-ml-1 mb-3 inline-flex items-center gap-0.5 text-xs text-muted hover:text-fg"><ChevronLeft size={14} /> Settings</Link>
       <h1 className="text-2xl font-semibold tracking-tight">Stats</h1>
       <p className="mt-1 text-[13px] text-muted">Completion across routines and tasks.</p>
 

@@ -1,10 +1,11 @@
 import { Suspense, useEffect, useState, useSyncExternalStore } from 'react'
 import { preloadable } from '@/lib/preloadable'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useMatch } from 'react-router-dom'
 import { onlineManager, useMutationState } from '@tanstack/react-query'
-import { BarChart3, CalendarDays, Cloud, CloudOff, Command, GraduationCap, Loader2, Repeat, Settings } from 'lucide-react'
+import { CalendarDays, Cloud, CloudOff, Command, GraduationCap, Loader2, Repeat, Settings, Shapes } from 'lucide-react'
 import { Logo } from './Logo'
 import { DEFAULT_SETTINGS, useMutations, useSettings } from '@/lib/data'
+import { startBoardSync } from '@/lib/boards'
 import { cn } from '@/lib/ui'
 
 export const CommandPalette = preloadable(() => import('./CommandPalette'))
@@ -13,7 +14,7 @@ const NAV = [
   { to: '/', label: 'Today', icon: CalendarDays },
   { to: '/routines', label: 'Routines', icon: Repeat },
   { to: '/learning', label: 'Learning', icon: GraduationCap },
-  { to: '/stats', label: 'Stats', icon: BarChart3 },
+  { to: '/boards', label: 'Boards', icon: Shapes },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -22,18 +23,25 @@ export function AppShell() {
   const { saveSettings } = useMutations()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [paletteLoaded, setPaletteLoaded] = useState(false)
+  // Inside a board ⌘K belongs to Excalidraw (add link); the editor's top bar opens the palette instead.
+  const inBoard = !!useMatch('/boards/:boardId')
 
   useEffect(() => {
+    const open = () => { setPaletteLoaded(true); setPaletteOpen(true) }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
+      if (!inBoard && e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         setPaletteLoaded(true)
         setPaletteOpen((o) => !o)
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+    window.addEventListener('winter-arc:palette', open)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('winter-arc:palette', open) }
+  }, [inBoard])
+
+  // Boards edited offline upload in the background (startup, reconnect, back to foreground).
+  useEffect(() => startBoardSync(), [])
 
   // First run: create the settings row with this device's timezone.
   useEffect(() => {
@@ -72,8 +80,8 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col pb-[calc(56px+env(safe-area-inset-bottom))] md:pb-0">
-        <div className="flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] md:hidden">
+      <main className="app-main flex min-w-0 flex-1 flex-col pb-[calc(56px+env(safe-area-inset-bottom))] md:pb-0">
+        <div className="mobile-header flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] md:hidden">
           <div className="flex h-12 items-center gap-2"><Logo size={18} /><span className="text-sm font-semibold">Winter Arc</span></div>
           <SyncStatus />
         </div>

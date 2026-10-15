@@ -58,8 +58,9 @@ test('plan a day end to end', async ({ page, context }) => {
     await expect(page.getByText('Synced').first()).toBeVisible({ timeout: 20_000 })
     await expect.poll(async () => (await dbTask('Offline task'))?.start_time).toBe('15:00:00')
 
-    // Stats shows the routine streak
-    await page.getByRole('link', { name: 'Stats' }).first().click()
+    // Stats (Settings → Profile) shows the routine streak
+    await page.getByRole('link', { name: 'Settings' }).first().click()
+    await page.getByRole('link', { name: /Stats/ }).click()
     await expect(page.getByText('Gym').first()).toBeVisible()
     await expect(page.getByRole('img', { name: 'Daily completion heatmap' })).toBeVisible()
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/stats-desktop.png` })

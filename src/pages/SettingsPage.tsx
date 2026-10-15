@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Check as CheckIcon, ChevronRight, KeyRound } from 'lucide-react'
+import { BarChart3, Check as CheckIcon, ChevronRight, KeyRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { del } from 'idb-keyval'
 import { toast } from 'sonner'
 import { Button } from '@/components/primitives'
 import { useAuth } from '@/lib/auth'
 import { DEFAULT_SETTINGS, useMutations, useSettings } from '@/lib/data'
+import { boardSync } from '@/lib/boards'
+import { clearBoardsLocally } from '@/lib/boards/store'
 import { disablePush, enablePush, getPushState, testNotification, type PushState } from '@/lib/push'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
@@ -37,14 +39,31 @@ export default function SettingsPage() {
   }
 
   const signOut = async () => {
+    const unsynced = await boardSync.unsyncedCount().catch(() => 0)
+    if (unsynced && !window.confirm(`${unsynced} board${unsynced === 1 ? ' has' : 's have'} changes that haven't synced yet. Sign out anyway and lose them?`)) return
     await supabase.auth.signOut()
     queryClient.clear()
     await del('winter-arc-cache')
+    await clearBoardsLocally()
   }
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 md:px-6">
       <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+
+      <Section title="Profile">
+        <Row label={session?.user.email ?? ''} hint="Signed in">
+          <Button size="sm" variant="subtle" onClick={signOut}>Sign out</Button>
+        </Row>
+        <Link to="/stats" className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-panel-2">
+          <BarChart3 size={16} className="text-accent" />
+          <span className="flex-1">
+            <span className="block text-sm md:text-[13px]">Stats</span>
+            <span className="block text-xs text-faint">Streaks, heatmap and completion rates</span>
+          </span>
+          <ChevronRight size={15} className="text-faint" />
+        </Link>
+      </Section>
 
       <section className="mt-8">
         <h2 className="mb-2 text-xs font-medium text-muted">Security</h2>
@@ -105,12 +124,6 @@ export default function SettingsPage() {
         </div>
         <p className="mt-2 text-xs text-faint">Saved on this device. Every theme is checked for WCAG AA contrast.</p>
       </section>
-
-      <Section title="Account">
-        <Row label={session?.user.email ?? ''}>
-          <Button size="sm" variant="subtle" onClick={signOut}>Sign out</Button>
-        </Row>
-      </Section>
     </div>
   )
 }

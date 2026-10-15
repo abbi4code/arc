@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { Toaster } from 'sonner'
 import { registerSW } from 'virtual:pwa-register'
+import './lib/boards/assetPath' // before any Excalidraw chunk can evaluate
 import App from './App'
 import { AuthProvider } from './lib/auth'
 import { persister, queryClient } from './lib/queryClient'

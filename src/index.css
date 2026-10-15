@@ -116,3 +116,10 @@
 
 /* Phone composer: the tab bar steps aside while typing (set by TodayPage). Unlayered on purpose. */
 html[data-composing] .mobile-tabbar { display: none; }
+
+/* Board editor: full screen on phones (set by BoardEditorPage). */
+html[data-board] .mobile-tabbar, html[data-board] .mobile-header { display: none; }
+html[data-board] .app-main { padding-bottom: 0; }
+
+/* Board thumbnails are rendered light; dark themes invert them like Excalidraw's own dark mode. */
+.dark .board-thumb { filter: invert(93%) hue-rotate(180deg); }
